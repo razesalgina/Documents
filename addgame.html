@@ -14,6 +14,7 @@
 </head>
 <body>
   <div class="app-layout">
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-logo">
         <div class="sidebar-logo-icon">
@@ -291,18 +292,28 @@
       }, 3000);
     }
     
-    const sidebar = document.getElementById('sidebar');
-    const sidebarOverlay = document.getElementById('sidebarOverlay');
-   
-    function toggleSidebar() {
-      sidebar.classList.toggle('open');
-      sidebarOverlay.classList.toggle('show');
-    }
-
-    function closeSidebar() {
-      sidebar.classList.remove('open');
-      sidebarOverlay.classList.remove('show');
-    }
+    window.addEventListener('DOMContentLoaded',function(){
+      var toggle=document.getElementById('menuToggle');
+      var sidebar=document.getElementById('sidebar');
+      var overlay=document.getElementById('sidebarOverlay');
+      if(toggle){
+        toggle.addEventListener('click',function(){
+          sidebar.classList.toggle('open');
+          overlay.classList.toggle('show');
+        });
+      }
+      if(overlay){
+        overlay.addEventListener('click',function(){
+          sidebar.classList.remove('open');
+          overlay.classList.remove('show');
+        });
+      }
+      // Mark active nav item
+      var path=window.location.pathname.split('/').pop();
+      document.querySelectorAll('.nav-item[data-page]').forEach(function(el){
+        if(el.dataset.page===path)el.classList.add('active');
+      });
+    });
   </script>
 
   <script src="js/config.js"></script>

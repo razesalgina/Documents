@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daftar Game — TourneyPro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+          </svg>
+        </div>
+        <div>
+          <div class="sidebar-logo-text">TourneyPro</div>
+          <div class="sidebar-logo-sub">MLBB Manager</div>
+        </div>
+      </div>
+
+      <div class="sidebar-nav">
+        <div class="nav-section-label">Navigation</div>
+
+        <a href="index.html" class="nav-item" data-page="index.html">
+          <svg viewBox="0 0 24 24">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+          Dashboard
+        </a>
+
+        <a href="tournament.html" class="nav-item" data-page="tournament.html">
+          <svg viewBox="0 0 24 24">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+            <path d="M4 22h16"/>
+            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+          </svg>
+          Tournament
+        </a>
+
+        <a href="match.html" class="nav-item active" data-page="match.html">
+          <svg viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Match
+        </a>
+
+        <a href="train.html" class="nav-item" data-page="train.html">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          Train
+        </a>
+
+        <a href="team.html" class="nav-item" data-page="team.html">
+          <svg viewBox="0 0 24 24">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          Tim
+        </a>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <div class="main-wrapper">
+      <header class="topbar">
+        <div class="topbar-breadcrumb">
+          <button class="mobile-toggle" type="button" aria-label="Buka menu" onclick="toggleSidebar()">
+            <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <span>Match</span>
+          <span class="sep">/</span>
+          <span class="current">Game</span>
+        </div>
+      </header>
+
+      <main class="page-content">
+        <div class="header-row">
+          <div>
+            <h1 class="page-title">Data Game</h1>
+            <p class="page-sub">Lihat hasil tiap game, durasi, dan ringkasan performa tim secara rapi.</p>
+          </div>
+
+          <div class="actions">
+            <a class="btn btn-secondary" href="./match.html">
+              <svg viewBox="0 0 24 24">
+                <polyline points="15 18 9 12 15 6"/>
+              </svg>
+              Kembali
+            </a>
+            <a class="btn btn-primary" href="./addgame.html">
+              <svg viewBox="0 0 24 24">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <line x1="5" y1="12" x2="19" y2="12"/>
+              </svg>
+              Tambah Game
+            </a>
+          </div>
+        </div>
+
+        <section class="card">
+          <div class="card-inner">
+            <div class="section-title">Ringkasan Game</div>
+            <div class="section-sub">Belum ada data game yang ditambahkan untuk match ini.</div>
+
+            <div class="table-wrap" style="margin-top: 24px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Game Number</th>
+                    <th>Result</th>
+                    <th>Waktu</th>
+                    <th>Kills Tim</th>
+                    <th>Deaths Tim</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="6">
+                      <div class="empty">
+                        <svg viewBox="0 0 24 24">
+                          <rect x="3" y="4" width="18" height="18" rx="2"/>
+                          <line x1="16" y1="2" x2="16" y2="6"/>
+                          <line x1="8" y1="2" x2="8" y2="6"/>
+                          <line x1="3" y1="10" x2="21" y2="10"/>
+                        </svg>
+                        <div style="font-weight:700;color:var(--color-text);margin-bottom:6px;">Belum ada game</div>
+                        <div>Tambahkan data game pertama untuk menampilkan statistik match.</div>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Game 1</td>
+                    <td><span class="badge win">Win</span></td>
+                    <td>15:42</td>
+                    <td>14</td>
+                    <td>8</td>
+                    <td>
+                      <a class="btn btn-secondary btn-sm" href="#">Detail</a>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>Game 2</td>
+                    <td><span class="badge lose">Lose</span></td>
+                    <td>12:18</td>
+                    <td>7</td>
+                    <td>13</td>
+                    <td>
+                      <a class="btn btn-secondary btn-sm" href="#">Detail</a>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <script>
+    var d=document.documentElement;
+    var pref=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';
+    d.setAttribute('data-theme',pref);
+    function updateIcon(theme){
+      var btn=document.getElementById('themeToggle');
+      if(!btn)return;
+      btn.innerHTML=theme==='dark'
+        ?'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
+        :'<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+    }
+    window.toggleTheme=function(){
+      var curr=d.getAttribute('data-theme')||'light';
+      var next=curr==='dark'?'light':'dark';
+      d.setAttribute('data-theme',next);
+      updateIcon(next);
+    };
+    window.addEventListener('DOMContentLoaded',function(){updateIcon(d.getAttribute('data-theme'));})
+    
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+   
+    function toggleSidebar() {
+      sidebar.classList.toggle('open');
+      sidebarOverlay.classList.toggle('show');
+    }
+
+    function closeSidebar() {
+      sidebar.classList.remove('open');
+      sidebarOverlay.classList.remove('show');
+    }    
+  </script>
+</body>
+</html>
