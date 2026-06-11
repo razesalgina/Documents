@@ -191,6 +191,11 @@ a {
   }
 }
 
+.hidden,
+.is-hidden {
+  display: none !important;
+}
+
 a,
 button,
 [role="button"],
@@ -637,6 +642,12 @@ select {
   font-size: var(--text-sm);
   max-width: 36ch;
   margin-bottom: var(--space-6);
+}
+
+.form-stack {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
 }
 
 .form-card {
