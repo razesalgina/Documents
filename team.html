@@ -78,18 +78,46 @@
 <div class="page-header">
   <div>
     <h1 class="page-title">Manajemen Tim</h1>
-    <p class="page-subtitle">Kelola anggota dan roster pemain</p>
+    <p class="page-sub">Kelola anggota dan roster pemain</p>
   </div>
 </div>
 
-<div style="display:grid;grid-template-columns:340px 1fr;gap:var(--space-6);align-items:start;">
+<div style="display:grid;grid-template-columns:1fr;gap:var(--space-6);">
+  <!-- Daftar Pemain -->
+  <div>
+    <div class="card-header" style="margin-bottom:var(--space-4)">
+      <h2 class="section-title">Roster Tim</h2>
+      <span class="badge badge-blue" id="rosterCount">0 pemain</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>#</th>
+          <th>Nama Pemain</th>
+          <th>Role Utama</th>
+          <th>Role Kedua</th>
+          <th>Status</th>
+          <th>Aksi</th>
+        </tr></thead>
+        <tbody id="teamBody">
+          <tr><td colspan="6">
+            <div class="empty-state" style="padding:var(--space-10)">
+              <div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+              <h3>Roster kosong</h3>
+              <p>Tambahkan pemain menggunakan form di samping</p>
+            </div>
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
 
   <!-- Form Tambah Pemain -->
-  <div class="card" style="position:sticky;top:calc(var(--topbar-height) + var(--space-6))">
+  <div class="card" style="top:calc(var(--topbar-height) + var(--space-6))">
     <div class="card-header">
       <div>
-        <div class="card-title">Tambah Pemain</div>
-        <div class="card-subtitle">Daftarkan anggota baru ke roster</div>
+        <div class="section-title">Tambah Pemain</div>
+        <div class="section-sub">Daftarkan anggota baru ke roster</div>
       </div>
     </div>
     <form id="teamForm" onsubmit="addPlayer(event)">
@@ -124,36 +152,7 @@
         Tambah Pemain
       </button>
     </form>
-  </div>
-
-  <!-- Daftar Pemain -->
-  <div>
-    <div class="card-header" style="margin-bottom:var(--space-4)">
-      <h2 class="card-title">Roster Tim</h2>
-      <span class="badge badge-blue" id="rosterCount">0 pemain</span>
-    </div>
-    <div class="table-wrapper">
-      <table class="data-table">
-        <thead><tr>
-          <th>#</th>
-          <th>Nama Pemain</th>
-          <th>Role Utama</th>
-          <th>Role Kedua</th>
-          <th>Status</th>
-          <th>Aksi</th>
-        </tr></thead>
-        <tbody id="teamBody">
-          <tr><td colspan="6">
-            <div class="empty-state" style="padding:var(--space-10)">
-              <div class="empty-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-              <h3>Roster kosong</h3>
-              <p>Tambahkan pemain menggunakan form di samping</p>
-            </div>
-          </td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
+  </div>  
 </div>
 
 <script>
