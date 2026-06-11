@@ -114,11 +114,11 @@
           <div class="card-header">
             <h2 class="section-title">Tahap 1: Informasi Game</h2>
           </div>
-          <div style="display: grid; gap: 16px; margin-top: 16px;">
+          <div class="form-stack">
             <div class="grid-2">
               <div>
                 <label class="form-label">Game Number</label>
-                <select class="input" id="gameNumber">
+                <select class="form-input" id="gameNumber">
                   <option value="1">Game 1</option><option value="2">Game 2</option>
                   <option value="3">Game 3</option><option value="4">Game 4</option>
                   <option value="5">Game 5</option>
@@ -126,7 +126,7 @@
               </div>
               <div>
                 <label class="form-label">Hasil Pertandingan</label>
-                <select class="input" id="gameResult">
+                <select class="form-input" id="gameResult">
                   <option value="win">WIN</option>
                   <option value="lose">LOSE</option>
                 </select>
@@ -136,25 +136,25 @@
             <div class="grid-2">
               <div>
                 <label class="form-label">Total Kills Tim</label>
-                <input class="input" type="number" id="teamKills" placeholder="0" min="0" required />
+                <input class="form-input" type="number" id="teamKills" placeholder="0" min="0" required />
               </div>
               <div>
                 <label class="form-label">Total Deaths Tim</label>
-                <input class="input" type="number" id="teamDeaths" placeholder="0" min="0" required />
+                <input class="form-input" type="number" id="teamDeaths" placeholder="0" min="0" required />
               </div>
             </div>
 
-            <div>
+            <div class = "form-group">
               <label class="form-label">Durasi Game</label>
-              <div style="display: flex; gap: 12px; align-items: center;">
-                <input class="input" type="number" id="gameDurationMin" placeholder="Menit" min="0" required style="width: 120px;" />
+              <div class="inline-duration-fields">
+                <input class="form-input input-inline-sm" type="number" id="gameDurationMin" placeholder="Menit" min="0" required style="width: 120px;" />
                 <span class="text-muted">menit</span>
-                <input class="input" type="number" id="gameDurationSec" placeholder="Detik" min="0" max="59" required style="width: 120px;" />
+                <input class="form-input input-inline-sm" type="number" id="gameDurationSec" placeholder="Detik" min="0" max="59" required style="width: 120px;" />
                 <span class="text-muted">detik</span>
               </div>
             </div>
 
-            <div class="actions" style="margin-top: 16px;">
+            <div class="form-actions">
               <button class="btn btn-primary" id="btnNextStep" type="button">
                 Next
               </button>
@@ -172,70 +172,70 @@
               <div class="role-head">
                 <div class="role-name">Jungler</div><span class="tag">Role 1</span>
               </div>
-              <select class="input select-player" required></select>
-              <select class="input select-hero" style="margin-top: 8px;" required></select>
+              <select class="form-input select-player" required></select>
+              <select class="form-input select-hero" style="margin-top: 8px;" required></select>
               <div class="grid-3" style="margin-top: 12px;">
-                <input class="input input-kills" type="number" placeholder="Kill" required />
-                <input class="input input-deaths" type="number" placeholder="Death" required />
-                <input class="input input-assists" type="number" placeholder="Assist" required />
+                <input class="form-input input-kills" type="number" placeholder="Kill" required />
+                <input class="form-input input-deaths" type="number" placeholder="Death" required />
+                <input class="form-input input-assists" type="number" placeholder="Assist" required />
               </div>
-              <input class="input input-gold" type="number" placeholder="Total Gold" style="margin-top: 12px;" required />
+              <input class="form-input input-gold" type="number" placeholder="Total Gold" style="margin-top: 12px;" required />
             </article>
 
             <article class="role-card">
               <div class="role-head">
                 <div class="role-name">Roamer</div><span class="tag">Role 2</span>
               </div>
-              <select class="input select-player" required></select>
-              <select class="input select-hero" style="margin-top: 8px;" required></select>
+              <select class="form-input select-player" required></select>
+              <select class="form-input select-hero" style="margin-top: 8px;" required></select>
               <div class="grid-3" style="margin-top: 12px;">
-                <input class="input input-kills" type="number" placeholder="Kill" required />
-                <input class="input input-deaths" type="number" placeholder="Death" required />
-                <input class="input input-assists" type="number" placeholder="Assist" required />
+                <input class="form-input input-kills" type="number" placeholder="Kill" required />
+                <input class="form-input input-deaths" type="number" placeholder="Death" required />
+                <input class="form-input input-assists" type="number" placeholder="Assist" required />
               </div>
-              <input class="input input-gold" type="number" placeholder="Total Gold" style="margin-top: 12px;" required />
+              <input class="form-input input-gold" type="number" placeholder="Total Gold" style="margin-top: 12px;" required />
             </article>
 
             <article class="role-card">
               <div class="role-head">
                 <div class="role-name">Mid Laner</div><span class="tag">Role 3</span>
               </div>
-              <select class="input select-player" required></select>
-              <select class="input select-hero" style="margin-top: 8px;" required></select>
+              <select class="form-input select-player" required></select>
+              <select class="form-input select-hero" style="margin-top: 8px;" required></select>
               <div class="grid-3" style="margin-top: 12px;">
-                <input class="input input-kills" type="number" placeholder="Kill" required />
-                <input class="input input-deaths" type="number" placeholder="Death" required />
-                <input class="input input-assists" type="number" placeholder="Assist" required />
+                <input class="form-input input-kills" type="number" placeholder="Kill" required />
+                <input class="form-input input-deaths" type="number" placeholder="Death" required />
+                <input class="form-input input-assists" type="number" placeholder="Assist" required />
               </div>
-              <input class="input input-gold" type="number" placeholder="Total Gold" style="margin-top: 12px;" required />
+              <input class="form-input input-gold" type="number" placeholder="Total Gold" style="margin-top: 12px;" required />
             </article>
 
             <article class="role-card">
               <div class="role-head">
                 <div class="role-name">Exp Laner</div><span class="tag">Role 4</span>
               </div>
-              <select class="input select-player" required></select>
-              <select class="input select-hero" style="margin-top: 8px;" required></select>
+              <select class="form-input select-player" required></select>
+              <select class="form-input select-hero" style="margin-top: 8px;" required></select>
               <div class="grid-3" style="margin-top: 12px;">
-                <input class="input input-kills" type="number" placeholder="Kill" required />
-                <input class="input input-deaths" type="number" placeholder="Death" required />
-                <input class="input input-assists" type="number" placeholder="Assist" required />
+                <input class="form-input input-kills" type="number" placeholder="Kill" required />
+                <input class="form-input input-deaths" type="number" placeholder="Death" required />
+                <input class="form-input input-assists" type="number" placeholder="Assist" required />
               </div>
-              <input class="input input-gold" type="number" placeholder="Total Gold" style="margin-top: 12px;" required />
+              <input class="form-input input-gold" type="number" placeholder="Total Gold" style="margin-top: 12px;" required />
             </article>
 
             <article class="role-card">
               <div class="role-head">
                 <div class="role-name">Gold Laner</div><span class="tag">Role 5</span>
               </div>
-              <select class="input select-player" required></select>
-              <select class="input select-hero" style="margin-top: 8px;" required></select>
+              <select class="form-input select-player" required></select>
+              <select class="form-input select-hero" style="margin-top: 8px;" required></select>
               <div class="grid-3" style="margin-top: 12px;">
-                <input class="input input-kills" type="number" placeholder="Kill" required />
-                <input class="input input-deaths" type="number" placeholder="Death" required />
-                <input class="input input-assists" type="number" placeholder="Assist" required />
+                <input class="form-input input-kills" type="number" placeholder="Kill" required />
+                <input class="form-input input-deaths" type="number" placeholder="Death" required />
+                <input class="form-input input-assists" type="number" placeholder="Assist" required />
               </div>
-              <input class="input input-gold" type="number" placeholder="Total Gold" style="margin-top: 12px;" required />
+              <input class="form-input input-gold" type="number" placeholder="Total Gold" style="margin-top: 12px;" required />
             </article>
           </div>
 
