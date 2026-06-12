@@ -225,7 +225,6 @@ a {
 }
 
 /* ============================================================
-   === PART 2/3 ===
    UTILITY — VISIBILITY
    ============================================================ */
 
@@ -350,7 +349,6 @@ a, button, [role="button"], input, textarea, select {
   cursor: pointer;
   white-space: nowrap;
 }
-/* (sambungan dari PART 1/3 — potongan terakhir: .nav-item { ... } ) */
 
 .nav-item:hover {
   background: var(--color-surface-offset);
@@ -720,7 +718,6 @@ a, button, [role="button"], input, textarea, select {
 }
 
 /* ============================================================
-   === PART 3/3 ===
    FORM — LAYOUT & COMPONENTS
    ============================================================ */
 
