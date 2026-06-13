@@ -552,7 +552,11 @@ a, button, [role="button"], input, textarea, select {
   stroke-linejoin: round;
 }
 
-/* SVG icon inside btn — replaces all inline style="width:18px; margin-right:8px; ..." */
+.btn-block {
+  width: 100%;
+  justify-content: center;
+}
+
 .btn-icon {
   width: 18px;
   margin-right: var(--space-2);
