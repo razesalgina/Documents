@@ -1,4 +1,3 @@
-<!-- === PART 1/2 === -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -8,34 +7,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="css/style.css"/>
 
-  <script>
-  (function(){
-    var d   = document.documentElement;
-    var pref = window.matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
-    d.setAttribute('data-theme', pref);
-
-    function updateIcon(theme){
-      var btn = document.getElementById('themeToggle');
-      if (!btn) return;
-      btn.innerHTML = theme === 'dark'
-        ? '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
-        : '<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-    }
-
-    window.toggleTheme = function(){
-      var curr = d.getAttribute('data-theme') || 'light';
-      var next = curr === 'dark' ? 'light' : 'dark';
-      d.setAttribute('data-theme', next);
-      updateIcon(next);
-    };
-
-    window.addEventListener('DOMContentLoaded', function(){
-      updateIcon(d.getAttribute('data-theme'));
-    });
-  })();
-  </script>
+  <script src="js/global.js" defer></script>
+  <script src="js/team.js" defer></script>
 </head>
 <body>
 <div class="app-layout">
@@ -93,7 +68,7 @@
         </svg>
         Train
       </a>
-      <a href="team.html" class="nav-item active" data-page="team.html">
+      <a href="team.html" class="nav-item" data-page="team.html">
         <svg viewBox="0 0 24 24">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
           <circle cx="9" cy="7" r="4"/>
@@ -105,7 +80,11 @@
     </div>
 
     <div class="sidebar-footer">
-      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <button
+        class="theme-toggle"
+        id="themeToggle"
+        aria-label="Toggle theme"
+      >
         <svg viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="5"/>
           <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
@@ -115,7 +94,6 @@
   </nav>
 
   <div class="main-wrapper">
-
     <header class="topbar">
       <div class="topbar-breadcrumb">
         <button class="menu-toggle" id="menuToggle" aria-label="Buka menu">
@@ -132,7 +110,6 @@
     </header>
 
     <main class="page-content">
-
       <div class="page-header">
         <div>
           <h1 class="page-title">Manajemen Tim</h1>
@@ -188,10 +165,16 @@
             </div>
           </div>
 
-          <form id="teamForm" onsubmit="addPlayer(event)">
+          <form id="teamForm">
             <div class="form-group">
               <label class="form-label" for="namaPemain">Nama Pemain</label>
-              <input class="form-input" type="text" id="namaPemain" placeholder="In-game name / IGN" required/>
+              <input
+                class="form-input"
+                type="text"
+                id="namaPemain"
+                placeholder="In-game name / IGN"
+                required
+              />
             </div>
 
             <div class="form-group">
@@ -230,162 +213,10 @@
           </form>
         </div>
       </section>
-
-      <script>
-      var players = [];
-      var roleColors = {
-        'Jungler':    'badge-red',
-        'Roamer':     'badge-blue',
-        'Mid Laner':  'badge-yellow',
-        'Exp Laner':  'badge-green',
-        'Gold Laner': 'badge-neutral'
-      };
-
-      function renderPlayers(){
-        var tbody = document.getElementById('teamBody');
-        var count = document.getElementById('rosterCount');
-        count.textContent = players.length + ' pemain';
-
-        if (players.length === 0){
-          tbody.innerHTML =
-            '<tr><td colspan="6">' +
-              '<div class="empty-state">' +
-                '<svg viewBox="0 0 24 24">' +
-                  '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>' +
-                  '<circle cx="9" cy="7" r="4"/>' +
-                  '<path d="M23 21v-2a4 4 0 0 0-3-3.87"/>' +
-                  '<path d="M16 3.13a4 4 0 0 1 0 7.75"/>' +
-                '</svg>' +
-                '<h3>Roster kosong</h3>' +
-                '<p>Tambahkan pemain menggunakan form di samping</p>' +
-              '</div>' +
-            '</td></tr>';
-          return;
-        }
-
-        tbody.innerHTML = players.map(function(p, i){
-          var rc  = roleColors[p.role]  || 'badge-neutral';
-          var rc2 = p.role2 ? (roleColors[p.role2] || 'badge-neutral') : '';
-          var statusClass = p.active ? 'badge-green' : 'badge-neutral';
-          var statusText  = p.active ? 'Aktif' : 'Tidak Aktif';
-
-          return (
-            '<tr>' +
-              '<td><span class="badge badge-neutral">' + (i + 1) + '</span></td>' +
-              '<td><strong>' + p.name + '</strong></td>' +
-              '<td><span class="badge ' + rc + '">' + p.role + '</span></td>' +
-              '<td>' +
-                (p.role2
-                  ? '<span class="badge ' + rc2 + '">' + p.role2 + '</span>'
-                  : '<span class="text-faint">—</span>') +
-              '</td>' +
-              '<td><span class="badge ' + statusClass + '">' + statusText + '</span></td>' +
-              '<td>' +
-                '<div class="table-actions">' +
-                  '<button class="btn btn-sm btn-ghost" onclick="toggleStatus(' + i + ')">' +
-                    (p.active ? 'Nonaktifkan' : 'Aktifkan') +
-                  '</button>' +
-                  '<button class="btn btn-sm btn-danger" onclick="removePlayer(' + i + ')">Hapus</button>' +
-                '</div>' +
-              '</td>' +
-            '</tr>'
-          );
-        }).join('');
-      }
-
-      function addPlayer(e){
-        e.preventDefault();
-        var name  = document.getElementById('namaPemain').value.trim();
-        var role  = document.getElementById('rolePrimary').value;
-        var role2 = document.getElementById('roleSecondary').value;
-
-        if (!name || !role){
-          showToast('Nama dan role utama wajib diisi', 'error');
-          return;
-        }
-        if (role === role2){
-          showToast('Role utama dan kedua tidak boleh sama', 'error');
-          return;
-        }
-
-        players.push({
-          name:  name,
-          role:  role,
-          role2: role2 || '',
-          active: true
-        });
-
-        document.getElementById('teamForm').reset();
-        renderPlayers();
-        showToast(name + ' berhasil ditambahkan!', 'success');
-      }
-
-      function removePlayer(idx){
-        players.splice(idx, 1);
-        renderPlayers();
-        showToast('Pemain dihapus dari roster', 'success');
-      }
-
-      function toggleStatus(idx){
-        players[idx].active = !players[idx].active;
-        renderPlayers();
-      }
-      </script>
-
     </main>
   </div>
 </div>
 
 <div class="toast-container" id="toastContainer"></div>
-
-<script>
-window.addEventListener('DOMContentLoaded',function(){
-  var toggle  = document.getElementById('menuToggle');
-  var sidebar = document.getElementById('sidebar');
-  var overlay = document.getElementById('sidebarOverlay');
-
-  if (toggle){
-    toggle.addEventListener('click',function(){
-      sidebar.classList.toggle('open');
-      overlay.classList.toggle('show');
-    });
-  }
-
-  if (overlay){
-    overlay.addEventListener('click',function(){
-      sidebar.classList.remove('open');
-      overlay.classList.remove('show');
-    });
-  }
-
-  // Mark active nav item
-  var path = window.location.pathname.split('/').pop();
-  document.querySelectorAll('.nav-item[data-page]').forEach(function(el){
-    if (el.dataset.page === path) el.classList.add('active');
-  });
-
-  // Inisialisasi roster
-  renderPlayers();
-});
-
-function showToast(msg,type){
-  type = type || 'success';
-  var c = document.getElementById('toastContainer');
-  if (!c) return;
-  var t = document.createElement('div');
-  t.className = 'toast ' + type;
-  t.innerHTML =
-    '<span class="toast-icon"><svg viewBox="0 0 24 24">' +
-    (type === 'success'
-      ? '<polyline points="20 6 9 17 4 12"/>'
-      : '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>') +
-    '</svg></span><span>' +
-    msg +
-    '</span><span class="toast-close" onclick="this.parentElement.remove()">&times;</span>';
-  c.appendChild(t);
-  setTimeout(function(){ t.remove(); }, 3500);
-}
-</script>
-
 </body>
 </html>

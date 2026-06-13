@@ -7,39 +7,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="css/style.css" />
 
-  <script>
-  (function(){
-    var d = document.documentElement;
-    var pref = window.matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
-    d.setAttribute('data-theme', pref);
-
-    function updateIcon(theme) {
-      var btn = document.getElementById('themeToggle');
-      if (!btn) return;
-      btn.innerHTML = theme === 'dark'
-        ? '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
-        : '<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-    }
-
-    window.toggleTheme = function() {
-      var curr = d.getAttribute('data-theme') || 'light';
-      var next = curr === 'dark' ? 'light' : 'dark';
-      d.setAttribute('data-theme', next);
-      updateIcon(next);
-    };
-
-    window.addEventListener('DOMContentLoaded', function() {
-      updateIcon(d.getAttribute('data-theme'));
-    });
-  })();
-  </script>
+  <script src="js/global.js" defer></script>
+  <script src="js/game.js" defer></script>
 </head>
 <body>
 <div class="app-layout">
 
-  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
@@ -79,7 +55,7 @@
         Tournament
       </a>
 
-      <a href="match.html" class="nav-item active" data-page="match.html">
+      <a href="match.html" class="nav-item" data-page="match.html">
         <svg viewBox="0 0 24 24">
           <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
           <line x1="16" y1="2" x2="16" y2="6"/>
@@ -109,8 +85,15 @@
     </nav>
 
     <div class="sidebar-footer">
-      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      <button
+        class="theme-toggle"
+        id="themeToggle"
+        aria-label="Toggle theme"
+      >
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
       </button>
     </div>
   </aside>
@@ -118,7 +101,7 @@
   <div class="main-wrapper">
     <header class="topbar">
       <div class="topbar-breadcrumb">
-        <button class="menu-toggle" type="button" aria-label="Buka menu" onclick="toggleSidebar()">
+        <button class="menu-toggle" type="button" aria-label="Buka menu" id="menuToggle">
           <svg viewBox="0 0 24 24">
             <line x1="3" y1="6" x2="21" y2="6"/>
             <line x1="3" y1="12" x2="21" y2="12"/>
@@ -135,7 +118,9 @@
       <div class="page-header">
         <div>
           <h1 class="page-title">Data Game</h1>
-          <p class="page-sub">Lihat hasil tiap game, durasi, dan ringkasan performa tim secara rapi.</p>
+          <p class="page-sub">
+            Lihat hasil tiap game, durasi, dan ringkasan performa tim secara rapi.
+          </p>
         </div>
 
         <div class="topbar-actions">
@@ -155,11 +140,13 @@
         </div>
       </div>
 
-      <section class="card">
+      <section class="section">
         <div class="card-header">
           <div>
             <div class="section-title">Ringkasan Game</div>
-            <div class="section-sub">Belum ada data game yang ditambahkan untuk match ini.</div>
+            <div class="section-sub">
+              Belum ada data game yang ditambahkan untuk match ini.
+            </div>
           </div>
         </div>
 
@@ -187,30 +174,13 @@
                     </svg>
                     <h3>Belum ada game</h3>
                     <p>Tambahkan data game pertama untuk menampilkan statistik match.</p>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td>Game 1</td>
-                <td><span class="badge win">Win</span></td>
-                <td>15:42</td>
-                <td>14</td>
-                <td>8</td>
-                <td>
-                  <div class="table-actions">
-                    <a class="btn btn-secondary btn-sm" href="#">Detail</a>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td>Game 2</td>
-                <td><span class="badge lose">Lose</span></td>
-                <td>12:18</td>
-                <td>7</td>
-                <td>13</td>
-                <td>
-                  <div class="table-actions">
-                    <a class="btn btn-secondary btn-sm" href="#">Detail</a>
+                    <a href="addgame.html" class="btn btn-primary btn-sm">
+                      <svg viewBox="0 0 24 24">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      Tambah Game
+                    </a>
                   </div>
                 </td>
               </tr>
@@ -220,22 +190,6 @@
       </section>
     </main>
   </div>
-
 </div>
-
-<script>
-  const sidebar = document.getElementById('sidebar');
-  const sidebarOverlay = document.getElementById('sidebarOverlay');
-
-  function toggleSidebar() {
-    sidebar.classList.toggle('open');
-    sidebarOverlay.classList.toggle('show');
-  }
-
-  function closeSidebar() {
-    sidebar.classList.remove('open');
-    sidebarOverlay.classList.remove('show');
-  }
-</script>
 </body>
 </html>

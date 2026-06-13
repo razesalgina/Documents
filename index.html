@@ -7,34 +7,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css"/>
+<link rel="stylesheet" href="css/style.css"/>
 
-<script>
-(function(){
-  var d = document.documentElement;
-  var pref = window.matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light';
-  d.setAttribute('data-theme', pref);
+<script src="js/global.js" defer></script>
+<script src="js/index.js" defer></script>
 
-  function updateIcon(theme) {
-    var btn = document.getElementById('themeToggle');
-    if (!btn) return;
-    btn.innerHTML = theme === 'dark'
-      ? '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
-      : '<svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-  }
-
-  window.toggleTheme = function() {
-    var curr = d.getAttribute('data-theme') || 'light';
-    var next = curr === 'dark' ? 'light' : 'dark';
-    d.setAttribute('data-theme', next);
-    updateIcon(next);
-  };
-
-  window.addEventListener('DOMContentLoaded', function() {
-    updateIcon(d.getAttribute('data-theme'));
-  });
-})();
-</script>
 </head>
 <body>
 <div class="app-layout">
@@ -104,7 +81,11 @@
     </div>
 
     <div class="sidebar-footer">
-      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" aria-label="Toggle theme">
+      <button
+        class="theme-toggle"
+        id="themeToggle"
+        aria-label="Toggle theme"
+      >
         <svg viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="5"/>
           <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
@@ -235,69 +216,12 @@
             </a>            
           </div>
         </div>
-
       </div>
-
-      <script>
-      /* Data loading — in-memory state (no localStorage: sandboxed iframe) */
-      var appState = { tournaments: [], matches: [], team: [], games: [] };
-      document.getElementById('kpiTournament').textContent = appState.tournaments.length || '0';
-      document.getElementById('kpiMatch').textContent      = appState.matches.length     || '0';
-      document.getElementById('kpiTeam').textContent       = appState.team.length        || '0';
-      document.getElementById('kpiWinrate').textContent    = '0%';
-      </script>
-
     </main>
   </div>
 </div>
 
 <div class="toast-container" id="toastContainer"></div>
-
-<script>
-window.addEventListener('DOMContentLoaded', function() {
-  var toggle  = document.getElementById('menuToggle');
-  var sidebar = document.getElementById('sidebar');
-  var overlay = document.getElementById('sidebarOverlay');
-
-  if (toggle) {
-    toggle.addEventListener('click', function() {
-      sidebar.classList.toggle('open');
-      overlay.classList.toggle('show');
-    });
-  }
-
-  if (overlay) {
-    overlay.addEventListener('click', function() {
-      sidebar.classList.remove('open');
-      overlay.classList.remove('show');
-    });
-  }
-
-  /* Mark active nav item based on current page filename */
-  var path = window.location.pathname.split('/').pop();
-  document.querySelectorAll('.nav-item[data-page]').forEach(function(el) {
-    if (el.dataset.page === path) el.classList.add('active');
-  });
-});
-
-function showToast(msg, type) {
-  type = type || 'success';
-  var c = document.getElementById('toastContainer');
-  if (!c) return;
-  var t = document.createElement('div');
-  t.className = 'toast ' + type;
-  t.innerHTML =
-    '<span class="toast-icon"><svg viewBox="0 0 24 24">'
-    + (type === 'success'
-        ? '<polyline points="20 6 9 17 4 12"/>'
-        : '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>')
-    + '</svg></span>'
-    + '<span>' + msg + '</span>'
-    + '<span class="toast-close" onclick="this.parentElement.remove()">&times;</span>';
-  c.appendChild(t);
-  setTimeout(function() { t.remove(); }, 3500);
-}
-</script>
 
 </body>
 </html>

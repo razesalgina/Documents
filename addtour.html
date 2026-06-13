@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Tournament — TourneyPro</title>
+  <title>Tambah Turnamen — TourneyPro</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css"/>
 
   <script src="js/global.js" defer></script>
-  <script src="js/tournament.js" defer></script>
+  <script src="js/addtour.js" defer></script>
 </head>
 <body>
 <div class="app-layout">
@@ -103,74 +103,111 @@
             <line x1="3" y1="18" x2="21" y2="18"/>
           </svg>
         </button>
-        <span>TourneyPro</span>
+        <span>Tournament</span>
         <span class="sep">/</span>
-        <span class="current">Tournament</span>
+        <span class="current">Tambah Turnamen</span>
       </div>
     </header>
 
     <main class="page-content">
       <div class="page-header">
         <div>
-          <h1 class="page-title">Tournament</h1>
-          <p class="page-sub">Kelola dan pantau semua turnamen tim</p>
+          <h1 class="page-title">Tambah Turnamen</h1>
+          <p class="page-sub">Isi detail turnamen baru yang akan diikuti tim</p>
         </div>
-        <a href="addtour.html" class="btn btn-primary">
+        <a href="tournament.html" class="btn btn-secondary">
           <svg viewBox="0 0 24 24">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
+            <polyline points="15 18 9 12 15 6"/>
           </svg>
-          Tambah Turnamen
+          Kembali
         </a>
       </div>
 
-      <section class="section">
-        <div class="card-header">
-          <div>
-            <h2 class="section-title">Semua Turnamen</h2>
-          </div>
-        </div>
+      <div class="card form-card">
+        <form id="tourForm">
+          <div class="form-section">
+            <div class="form-section-title">Informasi Dasar</div>
 
-        <div class="table-wrap">
-          <table id="tournamentTable">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Nama Turnamen</th>
-                <th>Jumlah Tim</th>
-                <th>Fase</th>
-                <th>Format</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="tournamentBody">
-              <tr>
-                <td colspan="6">
-                  <div class="empty-state">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
-                      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
-                      <path d="M4 22h16"/>
-                      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
-                      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
-                      <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
-                    </svg>
-                    <h3>Belum ada turnamen</h3>
-                    <p>Mulai dengan menambahkan turnamen pertama tim kamu</p>
-                    <a href="addtour.html" class="btn btn-primary btn-sm">
-                      <svg viewBox="0 0 24 24">
-                        <line x1="12" y1="5" x2="12" y2="19"/>
-                        <line x1="5" y1="12" x2="19" y2="12"/>
-                      </svg>
-                      Tambah Turnamen Baru
-                    </a>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
+            <div class="form-group">
+              <label class="form-label" for="namaTurnamen">Nama Turnamen</label>
+              <input
+                class="form-input"
+                type="text"
+                id="namaTurnamen"
+                placeholder="Contoh: MPL ID Season 14"
+                required
+              />
+            </div>
+
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label class="form-label" for="jumlahTim">Jumlah Tim</label>
+                <select class="form-select" id="jumlahTim">
+                  <option value="4">4 Tim</option>
+                  <option value="8" selected>8 Tim</option>
+                  <option value="16">16 Tim</option>
+                  <option value="32">32 Tim</option>
+                  <option value="64">64 Tim</option>
+                  <option value="128">128 Tim</option>
+                  <option value="256">256 Tim</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="faseSelect">Fase</label>
+                <select class="form-select" id="faseSelect">
+                  <option value="Fase 1">Fase 1</option>
+                  <option value="Fase 2">Fase 2</option>
+                  <option value="Fase 3">Fase 3</option>
+                  <option value="Fase 4">Fase 4</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="form-section-title">
+              Format Turnamen
+              <span>(Bisa pilih lebih dari 1)</span>
+            </div>
+            <div class="checkbox-grid">
+              <label class="checkbox-item">
+                <input type="checkbox" name="format" value="Single Elimination"/>
+                <span>Single Elimination</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="format" value="Double Elimination"/>
+                <span>Double Elimination</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="format" value="Group Stage"/>
+                <span>Group Stage</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="format" value="Swiss Stage"/>
+                <span>Swiss Stage</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="format" value="Round Robin"/>
+                <span>Round Robin</span>
+              </label>
+              <label class="checkbox-item">
+                <input type="checkbox" name="format" value="Playoff"/>
+                <span>Playoff</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">
+              <svg viewBox="0 0 24 24">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Simpan Turnamen
+            </button>
+            <a href="tournament.html" class="btn btn-ghost">Batal</a>
+          </div>
+        </form>
+      </div>
     </main>
   </div>
 </div>
