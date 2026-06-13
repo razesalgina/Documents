@@ -21,7 +21,7 @@
     }
 
     // TODO: nanti ganti isi tbody dengan baris match sebenarnya
-    // dan panggil window.TourneyPro.showToast('Match berhasil dimuat', 'success') jika perlu.
+    // dan panggil window.Esport.showToast('Match berhasil dimuat', 'success') jika perlu.
   }
 
   function initMatchPage() {

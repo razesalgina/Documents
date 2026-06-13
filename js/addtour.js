@@ -38,8 +38,8 @@
   }
 
   function showToast(message, type) {
-    if (window.TourneyPro && typeof window.TourneyPro.showToast === 'function') {
-      window.TourneyPro.showToast(message, type);
+    if (window.Esport && typeof window.Esport.showToast === 'function') {
+      window.Esport.showToast(message, type);
     }
   }
 
