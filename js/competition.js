@@ -38,7 +38,11 @@
     statusCell.textContent = competition.status || '-';
 
     const actionsCell = document.createElement('td');
-    actionsCell.textContent = '-'; // nanti bisa diisi tombol detail/edit
+    const editBtn = document.createElement('a');
+    editBtn.href = `editcompetition.html?id=${competition.id}`;
+    editBtn.className = 'btn btn-sm btn-secondary';
+    editBtn.textContent = 'Edit';
+    actionsCell.appendChild(editBtn);
 
     row.appendChild(indexCell);
     row.appendChild(nameCell);
