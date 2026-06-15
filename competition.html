@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Train — Esport</title>
+  <title>Competition — Esport</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css"/>
 
   <script src="js/global.js" defer></script>
+  <script src="js/competition.js" defer></script>
 </head>
 <body>
 <div class="app-layout">
@@ -104,51 +105,66 @@
         </button>
         <span>Esport</span>
         <span class="sep">/</span>
-        <span class="current">Train</span>
+        <span class="current">Competition</span>
       </div>
     </header>
 
     <main class="page-content">
       <div class="page-header">
         <div>
-          <h1 class="page-title">Train</h1>
-          <p class="page-sub">Riwayat latihan — scrim &amp; ranked</p>
+          <h1 class="page-title">Competition</h1>
+          <p class="page-sub">Kelola dan pantau semua kompetisi tim</p>
         </div>
-        <a href="addmatch.html" class="btn btn-primary">
+        <a href="addcompetition.html" class="btn btn-primary">
           <svg viewBox="0 0 24 24">
             <line x1="12" y1="5" x2="12" y2="19"/>
             <line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
-          Tambah Scrim / Ranked
+          Tambah Kompetisi
         </a>
       </div>
 
-      <section class="section">
+      <section class="section" id="tournamentSection">
         <div class="card-header">
-          <h2 class="section-title">Riwayat Scrim</h2>
-          <span class="badge badge-blue">0 match</span>
+          <div>
+            <h2 class="section-title">Semua Turnamen</h2>
+          </div>
         </div>
+
         <div class="table-wrap">
-          <table>
+          <table id="tournamentTable">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Lawan</th>
-                <th>Tanggal</th>
-                <th>Format</th>
+                <th>Nama Turnamen</th>
+                <th>Jumlah Tim</th>
+                <th>Prizepool</th>
+                <th>Rank</th>
+                <th>Status</th>
                 <th>Aksi</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="tournamentBody">
               <tr>
-                <td colspan="5">
+                <td colspan="7">
                   <div class="empty-state">
                     <svg viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10"/>
-                      <polyline points="12 6 12 12 16 14"/>
+                      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                      <path d="M4 22h16"/>
+                      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+                      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+                      <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
                     </svg>
-                    <h3>Belum ada scrim</h3>
-                    <p>Tambahkan sesi scrim untuk melacak perkembangan tim</p>
+                    <h3>Belum ada turnamen</h3>
+                    <p>Mulai dengan menambahkan turnamen pertama tim kamu</p>
+                    <a href="addcompetition.html" class="btn btn-primary btn-sm">
+                      <svg viewBox="0 0 24 24">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      Tambah Turnamen Baru
+                    </a>
                   </div>
                 </td>
               </tr>
@@ -157,31 +173,47 @@
         </div>
       </section>
 
-      <section class="section">
+      <section class="section" id="leagueSection">
         <div class="card-header">
-          <h2 class="section-title">Riwayat Ranked</h2>
-          <span class="badge badge-yellow">0 match</span>
+          <div>
+            <h2 class="section-title">Semua Liga</h2>
+          </div>
         </div>
+
         <div class="table-wrap">
-          <table>
+          <table id="leagueTable">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Lawan</th>
-                <th>Tanggal</th>
-                <th>Format</th>
+                <th>Nama Liga</th>
+                <th>Jumlah Tim</th>
+                <th>Prizepool</th>
+                <th>Rank</th>
+                <th>Status</th>
                 <th>Aksi</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="leagueBody">
               <tr>
-                <td colspan="5">
+                <td colspan="7">
                   <div class="empty-state">
                     <svg viewBox="0 0 24 24">
-                      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                      <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                      <path d="M4 22h16"/>
+                      <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+                      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+                      <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
                     </svg>
-                    <h3>Belum ada ranked</h3>
-                    <p>Catat game ranked untuk analisis performa individual</p>
+                    <h3>Belum ada liga</h3>
+                    <p>Mulai dengan menambahkan liga pertama tim kamu</p>
+                    <a href="addcompetition.html" class="btn btn-primary btn-sm">
+                      <svg viewBox="0 0 24 24">
+                        <line x1="12" y1="5" x2="12" y2="19"/>
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                      </svg>
+                      Tambah Liga Baru
+                    </a>
                   </div>
                 </td>
               </tr>

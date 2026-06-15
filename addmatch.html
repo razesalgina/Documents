@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Tambah Match — TourneyPro</title>
+  <title>Tambah Match — Esport</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
@@ -27,7 +27,7 @@
         </svg>
       </div>
       <div>
-        <div class="sidebar-logo-text">TourneyPro</div>
+        <div class="sidebar-logo-text">Esport</div>
         <div class="sidebar-logo-sub">MLBB Manager</div>
       </div>
     </div>
@@ -41,7 +41,7 @@
         </svg>
         Dashboard
       </a>
-      <a href="tournament.html" class="nav-item" data-page="tournament.html">
+      <a href="competition.html" class="nav-item" data-page="competition.html">
         <svg viewBox="0 0 24 24">
           <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
           <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
@@ -50,7 +50,7 @@
           <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
           <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
         </svg>
-        Tournament
+        Competition
       </a>
       <a href="match.html" class="nav-item" data-page="match.html">
         <svg viewBox="0 0 24 24">
@@ -128,49 +128,71 @@
           <div class="form-section">
             <div class="form-section-title">Detail Match</div>
 
-            <div class="form-group">
-              <label class="form-label">Kategori Match</label>
-              <div class="radio-group">
-                <label class="radio-item">
-                  <input type="radio" name="kategori" value="Tournament" required/>
-                  <span>Tournament</span>
-                </label>
-                <label class="radio-item">
-                  <input type="radio" name="kategori" value="Scrim"/>
-                  <span>Scrim</span>
-                </label>
-                <label class="radio-item">
-                  <input type="radio" name="kategori" value="Ranked"/>
-                  <span>Ranked</span>
-                </label>
+            
+              <div class="form-group">
+                <label class="form-label">Kategori Match</label>
+                <div class="radio-group">
+                  <label class="radio-item">
+                    <input type="radio" name="type" value="competition"/>
+                    <span>Tournament</span>
+                  </label>
+                  <label class="radio-item">
+                    <input type="radio" name="type" value="league"/>
+                    <span>League</span>
+                  </label>
+                  <label class="radio-item">
+                    <input type="radio" name="type" value="scrim"/>
+                    <span>Scrim</span>
+                  </label>
+                  <label class="radio-item">
+                    <input type="radio" name="type" value="ranked"/>
+                    <span>Ranked</span>
+                  </label>
+                </div>
               </div>
-            </div>
 
-            <div class="form-group">
-              <label class="form-label" for="opponentName">Nama Lawan</label>
+              <div class="form-group hidden" id="eventGroup">
+                <label class="form-label" for="eventSelect">Pilih Event</label>
+                <select class="form-select" id="eventSelect" name="event">
+                  <option value="">Pilih Tournament/League</option>
+                  <option value="mpl_id_s13">MPL ID S13 (Upcoming)</option>
+                  <option value="mdl_id_s11">MDL ID S11 (Ongoing)</option>
+                  <!-- nanti bisa diisi dinamis dari DB tournament/league -->
+                </select>
+              </div>
+
+              <div class="form-group hidden" id="formatGroup">
+                <label class="form-label" for="matchFormat">Format Match</label>
+                <select class="form-select" id="matchFormat" name="matchFormat">
+                  <option value="BO1">Best of 1</option>
+                  <option value="BO2">Best of 2</option>
+                  <option value="BO3" selected>Best of 3</option>
+                  <option value="BO4">Best of 4</option>
+                  <option value="BO5">Best of 5</option>
+                  <option value="BO7">Best of 7</option>
+                </select>
+              </div>
+            
+
+            <div class="form-group hidden" id="opponentGroup">
+              <label class="form-label" id="opponentName">Nama Lawan</label>
               <input
                 class="form-input"
                 type="text"
                 id="opponentName"
-                placeholder="Contoh: RRQ Hoshi"
-                required
+                name="opponentName"
+                placeholder="Contoh: RRQ Hoshi"                
               />
             </div>
 
-            <div class="form-grid-2">
-              <div class="form-group">
-                <label class="form-label" for="matchDate">Tanggal Match</label>
-                <input class="form-input" type="date" id="matchDate" required/>
+            <div class="form-grid-2 hidden" id="datetimeGroup">
+              <div class="form-group hidden" id="dateGroup">
+                <label class="form-label" id="matchDate" name="matchDate">Tanggal Match</label>
+                <input class="form-input" type="date" id="matchDate" name="matchDate"/>
               </div>
-              <div class="form-group">
-                <label class="form-label" for="matchFormat">Format Match</label>
-                <select class="form-select" id="matchFormat">
-                  <option value="BO1">Best of 1 (BO1)</option>
-                  <option value="BO2">Best of 2 (BO2)</option>
-                  <option value="BO3" selected>Best of 3 (BO3)</option>
-                  <option value="BO5">Best of 5 (BO5)</option>
-                  <option value="BO7">Best of 7 (BO7)</option>
-                </select>
+              <div class="form-group hidden" id="timeGroup">
+                <label class="form-label" id="matchTime" name="matchTime">Jam Match</label>
+                <input class="form-input" type="time" id="matchTime" name="matchTime"/>
               </div>
             </div>
           </div>

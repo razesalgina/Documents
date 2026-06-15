@@ -20,8 +20,8 @@
   }
 
   function showToast(message, type) {
-    if (window.TourneyPro && typeof window.TourneyPro.showToast === 'function') {
-      window.TourneyPro.showToast(message, type);
+    if (window.Esport && typeof window.Esport.showToast === 'function') {
+      window.Esport.showToast(message, type);
     }
   }
   
@@ -319,14 +319,37 @@
     const gameInfo = getGameInfo();
     const playerStats = getPlayerStats();
 
-    // TODO: simpan gameInfo + playerStats ke storage (localStorage / backend)
-    // dan hubungkan dengan matchId tertentu (kalau sudah ada).
+    // TODO: jika nanti ada matchId di query string, masukkan ke gameInfo.matchId
+    const payload = {
+      game: gameInfo,
+      players: playerStats,
+    };
 
-    showToast('Game berhasil disimpan!', 'success');
-
-    setTimeout(() => {
-      window.location.href = 'game.html';
-    }, REDIRECT_DELAY_MS);
+    const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
+    fetch(`${apiBase}save_game.php`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+      .then(async (response) => {
+        const json = await response.json().catch(() => null);
+        if (!response.ok || !json || !json.ok) {
+          const message = (json && json.message) || 'Gagal menyimpan game.';
+          throw new Error(message);
+        }
+        return json;
+      })
+      .then(() => {
+        showToast('Game berhasil disimpan!', 'success');
+        setTimeout(() => {
+          window.location.href = 'game.html';
+        }, REDIRECT_DELAY_MS);
+      })
+      .catch((error) => {
+        showToast(error.message || 'Terjadi kesalahan saat menyimpan game.', 'error');
+      });
   }
 
   function attachEventListeners() {

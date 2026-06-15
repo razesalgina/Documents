@@ -138,8 +138,8 @@
     initGlobal();
   });
 
-  window.TourneyPro = window.TourneyPro || {};
-  window.TourneyPro.showToast = showToast;
-  window.TourneyPro.getCurrentTheme = getCurrentTheme;
-  window.TourneyPro.setTheme = setTheme;
+  window.Esport = window.Esport || {};
+  window.Esport.showToast = showToast;
+  window.Esport.getCurrentTheme = getCurrentTheme;
+  window.Esport.setTheme = setTheme;
 })();

@@ -9,6 +9,35 @@
   };
 
   const players = [];
+  const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
+
+  function syncPlayersFromServer() {
+    return fetch(`${apiBase}team_api.php?action=list`)
+      .then(async (response) => {
+        const json = await response.json().catch(() => null);
+        if (!response.ok || !json || !json.ok) {
+          const message = (json && json.message) || 'Gagal memuat roster dari server.';
+          throw new Error(message);
+        }
+        return json.players || [];
+      })
+      .then((serverPlayers) => {
+        players.length = 0;
+        serverPlayers.forEach((p) => {
+          players.push({
+            id: p.id,
+            name: p.name,
+            role: p.primary_role,
+            role2: p.secondary_role || '',
+            active: !!p.is_active,
+          });
+        });
+        renderPlayers();
+      })
+      .catch((error) => {
+        showToast(error.message || 'Gagal memuat roster dari server.', 'error');
+      });
+  }
 
   function getElements() {
     return {
@@ -22,8 +51,8 @@
   }
 
   function showToast(message, type) {
-    if (window.TourneyPro && typeof window.TourneyPro.showToast === 'function') {
-      window.TourneyPro.showToast(message, type);
+    if (window.Esport && typeof window.Esport.showToast === 'function') {
+      window.Esport.showToast(message, type);
     }
   }
 
@@ -112,16 +141,45 @@
       return;
     }
 
-    players.push({
+    const payload = {
+      action: 'add',
       name,
-      role: primaryRole,
-      role2: secondaryRole || '',
-      active: true,
-    });
+      primary_role: primaryRole,
+      secondary_role: secondaryRole || '',
+      is_active: 1,
+    };
 
-    teamForm.reset();
-    renderPlayers();
-    showToast(`${name} berhasil ditambahkan!`, 'success');
+    fetch(`${apiBase}team_api.php`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+      .then(async (response) => {
+        const json = await response.json().catch(() => null);
+        if (!response.ok || !json || !json.ok) {
+          const message = (json && json.message) || 'Gagal menambahkan pemain.';
+          throw new Error(message);
+        }
+        return json.player;
+      })
+      .then((player) => {
+        players.push({
+          id: player.id,
+          name: player.name,
+          role: player.primary_role,
+          role2: player.secondary_role || '',
+          active: !!player.is_active,
+        });
+
+        teamForm.reset();
+        renderPlayers();
+        showToast(`${player.name} berhasil ditambahkan!`, 'success');
+      })
+      .catch((error) => {
+        showToast(error.message || 'Gagal menambahkan pemain.', 'error');
+      });
   }
 
   function handleTableClick(event) {
@@ -133,18 +191,73 @@
     if (!action || indexString == null) return;
 
     const index = Number(indexString);
-    if (Number.isNaN(index) || !players[index]) return;
+    const player = players[index];
+    if (Number.isNaN(index) || !player) return;
 
     if (action === 'remove-player') {
-      players.splice(index, 1);
-      renderPlayers();
-      showToast('Pemain dihapus dari roster', 'success');
+      if (!player.id) {
+        // fallback lokal
+        players.splice(index, 1);
+        renderPlayers();
+        showToast('Pemain dihapus dari roster', 'success');
+        return;
+      }
+
+      const payload = { action: 'delete', id: player.id };
+
+      fetch(`${apiBase}team_api.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then(async (response) => {
+          const json = await response.json().catch(() => null);
+          if (!response.ok || !json || !json.ok) {
+            const message = (json && json.message) || 'Gagal menghapus pemain.';
+            throw new Error(message);
+          }
+        })
+        .then(() => {
+          players.splice(index, 1);
+          renderPlayers();
+          showToast('Pemain dihapus dari roster', 'success');
+        })
+        .catch((error) => {
+          showToast(error.message || 'Gagal menghapus pemain.', 'error');
+        });
+
       return;
     }
 
     if (action === 'toggle-status') {
-      players[index].active = !players[index].active;
-      renderPlayers();
+      if (!player.id) {
+        player.active = !player.active;
+        renderPlayers();
+        return;
+      }
+
+      const payload = { action: 'toggle', id: player.id };
+
+      fetch(`${apiBase}team_api.php`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+        .then(async (response) => {
+          const json = await response.json().catch(() => null);
+          if (!response.ok || !json || !json.ok) {
+            const message = (json && json.message) || 'Gagal mengubah status pemain.';
+            throw new Error(message);
+          }
+          return json.is_active;
+        })
+        .then((isActive) => {
+          players[index].active = !!isActive;
+          renderPlayers();
+        })
+        .catch((error) => {
+          showToast(error.message || 'Gagal mengubah status pemain.', 'error');
+        });
     }
   }
 
@@ -160,7 +273,7 @@
 
   function initTeamPage() {
     attachEventListeners();
-    renderPlayers();
+    syncPlayersFromServer();
   }
 
   document.addEventListener('DOMContentLoaded', () => {
