@@ -125,19 +125,22 @@
         </a>
       </div>
 
-      <section class="section">
+      <section class="section" id="matchSection">
         <div class="card-header">
           <div>
             <h2 class="section-title">Semua Match</h2>
           </div>
         </div>
 
-        <div class="table-wrap">
+        <!-- Toolbar di-inject oleh match.js -->
+
+        <div class="table-wrap" id="matchTableWrap">
           <table>
             <thead>
               <tr>
                 <th>#</th>
                 <th>Nama Lawan</th>
+                <th>Kategori</th>
                 <th>Score</th>
                 <th>Format</th>
                 <th>Status</th>
@@ -146,7 +149,7 @@
             </thead>
             <tbody id="matchBody">
               <tr>
-                <td colspan="6">
+                <td colspan="7">
                   <div class="empty-state">
                     <svg viewBox="0 0 24 24">
                       <rect x="3" y="4" width="18" height="18" rx="2"/>

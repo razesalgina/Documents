@@ -67,14 +67,37 @@ if ($method === 'GET' && $action === 'get') {
     exit;
 }
 
-// ── POST: add | update ──────────────────────
+// ── POST: add | update | delete ───────────────
 if ($method === 'POST') {
     $data   = json_decode(file_get_contents('php://input'), true) ?? [];
     $action = $data['action'] ?? $action;
 
-    // ─── HELPERS (shared) ──────────────────────────────
     $validTypes    = ['tournament', 'league', 'scrim', 'ranked'];
     $validStatuses = ['upcoming', 'finished', 'cancel'];
+
+    // ─── DELETE ─────────────────────────────────
+    if ($action === 'delete') {
+        $id = (int)($data['id'] ?? 0);
+        if ($id <= 0) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'message' => 'ID tidak valid']);
+            exit;
+        }
+        try {
+            $stmt = $pdo->prepare('DELETE FROM matches WHERE id = :id');
+            $stmt->execute([':id' => $id]);
+            if ($stmt->rowCount() === 0) {
+                http_response_code(404);
+                echo json_encode(['ok' => false, 'message' => 'Match tidak ditemukan']);
+                exit;
+            }
+            echo json_encode(['ok' => true]);
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'message' => 'Gagal menghapus match']);
+        }
+        exit;
+    }
 
     // ─── ADD ────────────────────────────────────
     if ($action === 'add') {
@@ -93,7 +116,6 @@ if ($method === 'POST') {
             exit;
         }
 
-        // Normalisasi waktu per tipe
         if ($type === 'ranked') {
             if ($matchDate === '') $matchDate = date('Y-m-d');
             $matchTime = '00:00:00';
@@ -134,7 +156,6 @@ if ($method === 'POST') {
                 ':match_time'     => $matchTime,
                 ':status'         => $status,
             ]);
-
             echo json_encode(['ok' => true, 'match' => [
                 'id'             => (int)$pdo->lastInsertId(),
                 'competition_id' => $competitionId,
@@ -198,12 +219,9 @@ if ($method === 'POST') {
             }
         }
 
-        // Status: manual override jika valid, else auto-hitung
         $status = in_array($statusManual, $validStatuses, true)
             ? $statusManual
             : determineStatus($matchDate, $matchTime);
-
-        // Result selalu dihitung dari skor
         $result = determineResult($ourScore, $opponentScore);
 
         try {
@@ -234,13 +252,11 @@ if ($method === 'POST') {
                 ':match_time'     => $matchTime,
                 ':status'         => $status,
             ]);
-
             if ($stmt->rowCount() === 0) {
                 http_response_code(404);
                 echo json_encode(['ok' => false, 'message' => 'Match tidak ditemukan']);
                 exit;
             }
-
             echo json_encode(['ok' => true, 'match' => [
                 'id'             => $id,
                 'competition_id' => $competitionId,
