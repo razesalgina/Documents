@@ -215,5 +215,31 @@ if ($method === 'POST') {
     }
 }
 
+case 'get':
+  $id = intval($_GET['id'] ?? 0);
+  $row = $pdo->prepare("SELECT * FROM competitions WHERE id = ?");
+  $row->execute([$id]);
+  $competition = $row->fetch(PDO::FETCH_ASSOC);
+  if (!$competition) {
+    echo json_encode(['ok' => false, 'message' => 'Not found']);
+    exit;
+  }
+  echo json_encode(['ok' => true, 'competition' => $competition]);
+  break;
+
+case 'update':
+  // mirip 'add', tapi pakai UPDATE ... WHERE id = ?
+  $id = intval($body['id'] ?? 0);
+  $stmt = $pdo->prepare("UPDATE competitions SET
+    name=?, type=?, registration_fee=?, prizepool=?, final_rank=?, status=?,
+    team_count=?, phase_count=?,
+    phase_format1=?, phase_format2=?, phase_format3=?, phase_format4=?,
+    phase_status1=?, phase_status2=?, phase_status3=?, phase_status4=?,
+    phase_bracket1=?, phase_bracket2=?, phase_bracket3=?, phase_bracket4=?
+    WHERE id=?");
+  $stmt->execute([/* binding */..., $id]);
+  echo json_encode(['ok' => true]);
+  break;
+
 http_response_code(400);
 echo json_encode(['ok' => false, 'message' => 'Action tidak dikenal']);
