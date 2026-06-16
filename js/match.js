@@ -1,36 +1,46 @@
 // js/match.js
 (function () {
+
   function showToast(message, type) {
     if (window.Esport && typeof window.Esport.showToast === 'function') {
       window.Esport.showToast(message, type);
     }
   }
 
-  function formatDate(dateStr) {
-    if (!dateStr) return '-';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+  // ── Badge helpers ───────────────────────────────────
+
+  function resultBadgeHtml(our, opp, result) {
+    // result dari DB (win/lose/draw), fallback hitung manual
+    let r = (result || '').toLowerCase();
+    if (!r || r === '') {
+      const a = parseInt(our, 10) || 0;
+      const b = parseInt(opp, 10) || 0;
+      if (a > b)      r = 'win';
+      else if (a < b) r = 'lose';
+      else            r = 'draw';
+    }
+
+    const cssMap  = { win: 'badge badge-green', lose: 'badge badge-red', draw: 'badge badge-yellow' };
+    const label   = r.charAt(0).toUpperCase() + r.slice(1);
+    const cssClass = cssMap[r] || 'badge badge-neutral';
+    return `<span class="${cssClass}">${label}</span>`;
   }
 
-  function formatType(type) {
-    const map = { tournament: 'Tournament', league: 'League', scrim: 'Scrim', ranked: 'Ranked' };
-    return map[(type || '').toLowerCase()] || type || '-';
+  function statusBadgeHtml(status) {
+    const s = (status || '').toLowerCase();
+    const cssMap   = { upcoming: 'badge badge-yellow', finished: 'badge badge-green', cancel: 'badge badge-red' };
+    const labelMap = { upcoming: 'Upcoming', finished: 'Finished', cancel: 'Cancel' };
+    const cssClass  = cssMap[s] || 'badge badge-neutral';
+    const label     = labelMap[s] || status || '-';
+    return `<span class="${cssClass}">${label}</span>`;
   }
 
-  function formatStatus(status) {
-    const map = {
-      upcoming: '<span class="badge badge-upcoming">Upcoming</span>',
-      finished: '<span class="badge badge-finished">Finished</span>',
-      cancel:   '<span class="badge badge-cancel">Cancel</span>',
-    };
-    return map[(status || '').toLowerCase()] || status || '-';
-  }
+  // ── Render ───────────────────────────────────────
 
   function renderEmptyState(tbody) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="7">
+        <td colspan="6">
           <div class="empty-state">
             <svg viewBox="0 0 24 24">
               <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -61,25 +71,32 @@
       return;
     }
 
-    tbody.innerHTML = matches.map((m, i) => `
-      <tr>
-        <td>${i + 1}</td>
-        <td>${m.opponent_name || '-'}</td>
-        <td>${formatDate(m.match_date)}</td>
-        <td>${formatType(m.type)}</td>
-        <td>${m.match_format || '-'}</td>
-        <td>${formatStatus(m.status)}</td>
-        <td>
-          <a href="editmatch.html?id=${m.id}" class="btn btn-sm btn-secondary">
-            <svg viewBox="0 0 24 24" width="14" height="14">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-            </svg>
-            Edit
-          </a>
-        </td>
-      </tr>`).join('');
+    tbody.innerHTML = matches.map((m, i) => {
+      const our  = m.our_score != null ? m.our_score : 0;
+      const opp  = m.opponent_score != null ? m.opponent_score : 0;
+      const scoreCell = `${our}:${opp} ${resultBadgeHtml(our, opp, m.result)}`;
+
+      return `
+        <tr>
+          <td>${i + 1}</td>
+          <td>${m.opponent_name || '-'}</td>
+          <td>${scoreCell}</td>
+          <td>${m.format || '-'}</td>
+          <td>${statusBadgeHtml(m.status)}</td>
+          <td>
+            <a href="editmatch.html?id=${m.id}" class="btn btn-sm btn-secondary">
+              <svg viewBox="0 0 24 24" width="14" height="14">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+              Edit
+            </a>
+          </td>
+        </tr>`;
+    }).join('');
   }
+
+  // ── Fetch ───────────────────────────────────────
 
   function loadMatches() {
     const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
@@ -89,15 +106,12 @@
         if (!json || !json.ok) throw new Error('Gagal mengambil data match');
         return json.matches || [];
       })
-      .then((matches) => {
-        renderMatchRows(matches);
-      })
-      .catch((err) => {
-        showToast(err.message || 'Gagal memuat match.', 'error');
-      });
+      .then((matches) => renderMatchRows(matches))
+      .catch((err) => showToast(err.message || 'Gagal memuat match.', 'error'));
   }
 
   document.addEventListener('DOMContentLoaded', () => {
     loadMatches();
   });
+
 })();
