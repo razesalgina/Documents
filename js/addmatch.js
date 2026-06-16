@@ -10,19 +10,22 @@
 
   function getElements() {
     return {
-      formElement:      document.getElementById('addMatchForm'),
-      eventGroup:       document.getElementById('eventGroup'),
-      opponentGroup:    document.getElementById('opponentGroup'),
-      opponentInput:    document.getElementById('opponentNameInput'),
-      datetimeGroup:    document.getElementById('datetimeGroup'),
-      formatGroup:      document.getElementById('formatGroup'),
-      dateGroup:        document.getElementById('dateGroup'),
-      timeGroup:        document.getElementById('timeGroup'),
-      rankedAutoLabel:  document.getElementById('rankedAutoLabel'),
+      formElement:     document.getElementById('addMatchForm'),
+      eventGroup:      document.getElementById('eventGroup'),
+      opponentGroup:   document.getElementById('opponentGroup'),
+      opponentInput:   document.getElementById('opponentNameInput'),
+      datetimeGroup:   document.getElementById('datetimeGroup'),
+      formatGroup:     document.getElementById('formatGroup'),
+      dateGroup:       document.getElementById('dateGroup'),
+      timeGroup:       document.getElementById('timeGroup'),
+      rankedAutoLabel: document.getElementById('rankedAutoLabel'),
+      breadcrumbParent: document.getElementById('breadcrumbParent'),
+      backBtn:         document.getElementById('backBtn'),
+      cancelBtn:       document.getElementById('cancelBtn'),
     };
   }
 
-  // ── Auto-generate ranked name ───────────────────────
+  // ── Auto-generate ranked name ─────────────────────
 
   function fetchNextRankedName() {
     const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
@@ -38,17 +41,34 @@
       .catch(() => 'Ranked1');
   }
 
-  // ── Form visibility ──────────────────────────────
+  // ── Update breadcrumb & back links ─────────────────
+
+  function updateNavLinks(type) {
+    const { breadcrumbParent, backBtn, cancelBtn } = getElements();
+    const isTrainType = type === 'scrim' || type === 'ranked';
+    const href        = isTrainType ? 'train.html' : 'match.html';
+    const label       = isTrainType ? 'Train' : 'Match';
+
+    if (breadcrumbParent) breadcrumbParent.textContent = label;
+    if (backBtn)          backBtn.href   = href;
+    if (cancelBtn)        cancelBtn.href = href;
+  }
+
+  // ── Form visibility ─────────────────────────────
 
   function updateFormVisibility(type) {
-    const { eventGroup, opponentGroup, opponentInput, datetimeGroup,
-            formatGroup, dateGroup, timeGroup, rankedAutoLabel } = getElements();
+    const { eventGroup, opponentGroup, datetimeGroup, formatGroup,
+            dateGroup, timeGroup, rankedAutoLabel } = getElements();
     if (!datetimeGroup) return;
 
+    // Sembunyikan semua dulu
     [eventGroup, opponentGroup, datetimeGroup, formatGroup,
      dateGroup, timeGroup, rankedAutoLabel].forEach((el) => {
       if (el) el.classList.add('hidden');
     });
+
+    // Update breadcrumb & tombol kembali
+    updateNavLinks(type);
 
     if (type === 'tournament' || type === 'league') {
       if (eventGroup)    eventGroup.classList.remove('hidden');
@@ -70,11 +90,11 @@
       if (dateGroup)       dateGroup.classList.remove('hidden');
       if (rankedAutoLabel) rankedAutoLabel.classList.remove('hidden');
 
-      // Fetch dan tampilkan nama ranked berikutnya
       fetchNextRankedName().then((name) => {
-        if (rankedAutoLabel) rankedAutoLabel.textContent = `Sesi ini akan disimpan sebagai: ${name}`;
-        // Simpan di dataset agar mudah diambil saat submit
-        if (rankedAutoLabel) rankedAutoLabel.dataset.rankedName = name;
+        if (rankedAutoLabel) {
+          rankedAutoLabel.textContent        = `Sesi ini akan disimpan sebagai: ${name}`;
+          rankedAutoLabel.dataset.rankedName = name;
+        }
       });
     }
   }
@@ -106,12 +126,10 @@
     let opponentName;
 
     if (type === 'ranked') {
-      // Ambil nama yang sudah di-generate
       const rankedAutoLabel = document.getElementById('rankedAutoLabel');
       opponentName = (rankedAutoLabel && rankedAutoLabel.dataset.rankedName)
         ? rankedAutoLabel.dataset.rankedName
         : null;
-
       if (!matchDate) { showToast('Tanggal wajib diisi untuk Ranked', 'error'); return; }
 
     } else {
@@ -151,7 +169,7 @@
       })
       .then(() => {
         showToast('Match berhasil disimpan!', 'success');
-        const redirect = type === 'scrim' || type === 'ranked' ? 'train.html' : 'match.html';
+        const redirect = (type === 'scrim' || type === 'ranked') ? 'train.html' : 'match.html';
         setTimeout(() => { window.location.href = redirect; }, REDIRECT_DELAY_MS);
       })
       .catch((err) => showToast(err.message || 'Terjadi kesalahan saat menyimpan match.', 'error'));
@@ -180,7 +198,7 @@
           })
           .forEach((c) => {
             const opt = document.createElement('option');
-            opt.value = c.id;
+            opt.value       = c.id;
             opt.textContent = `${c.name} (${c.type})`;
             select.appendChild(opt);
           });
