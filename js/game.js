@@ -4,6 +4,9 @@
   let matchId   = 0;
   let matchData = null;
 
+  // Cache detail yang sudah di-fetch: { [gameId]: players[] }
+  const detailCache = {};
+
   const apiBase = () => window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
 
   function showToast(msg, type) {
@@ -23,6 +26,7 @@
     return isNaN(n) ? Infinity : n;
   }
 
+  // ── Badge helpers ────────────────────────────
   function resultBadgeHtml(result) {
     const r = (result || '').toLowerCase();
     const map = { win: 'badge badge-green', lose: 'badge badge-red', draw: 'badge badge-yellow' };
@@ -38,6 +42,102 @@
     ].join(' ');
   }
 
+  function kdaClass(kda) {
+    if (kda >= 3) return 'kda-high';
+    if (kda >= 2) return 'kda-mid';
+    return 'kda-low';
+  }
+
+  // ── Detail table HTML ────────────────────────
+  function buildDetailHtml(gameNum, players) {
+    if (!players || players.length === 0) {
+      return `<div class="detail-empty">Tidak ada data pemain untuk Game ${gameNum}.</div>`;
+    }
+
+    const rows = players.map((p) => {
+      const k   = Number(p.kills   ?? 0);
+      const d   = Number(p.deaths  ?? 0);
+      const a   = Number(p.assists ?? 0);
+      const kda = parseFloat(p.kda ?? ((k + a) / Math.max(d, 1)).toFixed(2));
+      const gold = Number(p.total_gold ?? 0).toLocaleString('id-ID');
+      return `
+        <tr>
+          <td><strong>${p.player_name || '-'}</strong></td>
+          <td><em style="color:var(--color-text-muted);font-style:normal;font-size:10px">${p.role_name || '-'}</em></td>
+          <td>${p.hero_name || '-'}</td>
+          <td class="${kdaClass(kda)}">${kda}</td>
+          <td>${k}</td>
+          <td>${d}</td>
+          <td>${a}</td>
+          <td>${gold}</td>
+        </tr>`;
+    }).join('');
+
+    return `
+      <div class="detail-label">Detail Statistik — Game ${gameNum}</div>
+      <table class="table-detail">
+        <thead>
+          <tr>
+            <th>Nama Player</th>
+            <th>Role</th>
+            <th>Hero</th>
+            <th>KDA</th>
+            <th>Kills</th>
+            <th>Deaths</th>
+            <th>Assists</th>
+            <th>Total Gold</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
+  // ── Toggle detail row ─────────────────────────
+  async function toggleDetail(btn, gameId, gameNum, colSpan) {
+    const existingRow = document.getElementById(`detail-row-${gameId}`);
+
+    if (existingRow) {
+      // Tutup — hapus baris detail
+      existingRow.remove();
+      btn.textContent = 'Detail';
+      btn.classList.remove('is-open');
+      return;
+    }
+
+    // Buka — fetch jika belum cache
+    btn.textContent = '...';
+    btn.disabled = true;
+
+    try {
+      if (!detailCache[gameId]) {
+        const res  = await fetch(`${apiBase()}game_api.php?action=get&id=${gameId}`);
+        const json = await res.json().catch(() => null);
+        detailCache[gameId] = (json && json.ok && json.game) ? (json.game.players || []) : [];
+      }
+
+      const players = detailCache[gameId];
+
+      // Sisipkan <tr class="detail-row"> setelah baris game ini
+      const gameRow   = btn.closest('tr');
+      const detailRow = document.createElement('tr');
+      detailRow.className = 'detail-row';
+      detailRow.id = `detail-row-${gameId}`;
+      detailRow.innerHTML = `<td colspan="${colSpan}">
+        <div class="detail-inner">${buildDetailHtml(gameNum, players)}</div>
+      </td>`;
+
+      gameRow.insertAdjacentElement('afterend', detailRow);
+      btn.textContent = 'Detail ▲';
+      btn.classList.add('is-open');
+    } catch (_) {
+      showToast('Gagal memuat detail game.', 'error');
+      btn.textContent = 'Detail';
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  // ── Match meta ───────────────────────────────
   function updateMatchMeta(match) {
     const opponentName = match.opponent_name || 'Match';
 
@@ -62,10 +162,13 @@
     }
   }
 
+  // ── Render games ────────────────────────────
   function renderGames(games) {
     const tbody    = document.getElementById('gameBody');
     const countEl  = document.getElementById('gameCount');
     const maxGames = matchData ? maxGamesFromFormat(matchData.format) : Infinity;
+    // colspan sesuai jumlah kolom thead: Game, Result, Waktu, Score, MVP, Detail, Aksi = 7
+    const COL_SPAN = 7;
 
     if (countEl) {
       const remaining = maxGames === Infinity ? '' : ` / ${maxGames}`;
@@ -83,7 +186,7 @@
 
     if (games.length === 0) {
       tbody.innerHTML = `
-        <tr><td colspan="7">
+        <tr><td colspan="${COL_SPAN}">
           <div class="empty-state">
             <svg viewBox="0 0 24 24">
               <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -109,24 +212,47 @@
         : `<span class="badge badge-neutral">—</span>`;
 
       return `
-        <tr>
+        <tr data-game-id="${g.id}">
           <td><strong>Game ${g.game_number}</strong></td>
           <td>${resultBadgeHtml(g.result)}</td>
           <td>${dur}</td>
           <td>${scoreBadgeHtml(g.team_kills, g.team_deaths)}</td>
           <td>${mvp}</td>
+          <td>
+            <button
+              class="btn btn-sm btn-detail"
+              data-id="${g.id}"
+              data-num="${g.game_number}"
+              data-colspan="${COL_SPAN}"
+              aria-expanded="false"
+            >Detail</button>
+          </td>
           <td class="actions-cell">
             <a href="editgame.html?id=${g.id}" class="btn btn-sm btn-secondary">Edit</a>
-            <button class="btn btn-sm btn-danger" data-id="${g.id}" data-num="${g.game_number}">Hapus</button>
+            <button class="btn btn-sm btn-danger" data-id="${g.id}" data-num="${g.game_number}" data-action="delete">Hapus</button>
           </td>
         </tr>`;
     }).join('');
 
-    tbody.querySelectorAll('button[data-id]').forEach((btn) => {
-      btn.addEventListener('click', () => handleDelete(Number(btn.dataset.id), btn.dataset.num));
+    // Event delegation — satu listener untuk detail + hapus
+    tbody.addEventListener('click', (e) => {
+      const detailBtn = e.target.closest('.btn-detail');
+      if (detailBtn) {
+        const gId  = Number(detailBtn.dataset.id);
+        const gNum = detailBtn.dataset.num;
+        const cs   = Number(detailBtn.dataset.colspan);
+        toggleDetail(detailBtn, gId, gNum, cs);
+        return;
+      }
+
+      const deleteBtn = e.target.closest('[data-action="delete"]');
+      if (deleteBtn) {
+        handleDelete(Number(deleteBtn.dataset.id), deleteBtn.dataset.num);
+      }
     });
   }
 
+  // ── Delete ──────────────────────────────────
   function handleDelete(id, num) {
     if (!confirm(`Hapus Game ${num}? Tindakan ini tidak bisa dibatalkan.`)) return;
     fetch(`${apiBase()}game_api.php`, {
@@ -138,11 +264,14 @@
         const json = await res.json().catch(() => null);
         if (!json || !json.ok) throw new Error((json && json.message) || 'Gagal menghapus.');
         showToast(`Game ${num} berhasil dihapus.`, 'success');
+        // Clear cache game yang dihapus
+        delete detailCache[id];
         loadGames();
       })
       .catch((err) => showToast(err.message || 'Gagal menghapus game.', 'error'));
   }
 
+  // ── Load ─────────────────────────────────────
   function loadMatchInfo() {
     return fetch(`${apiBase()}match_api.php?action=get&id=${matchId}`)
       .then(async (res) => {
