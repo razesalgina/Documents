@@ -77,38 +77,38 @@
     const rankCell = document.createElement('td');
     rankCell.textContent = competition.final_rank || '-';
 
-    // Status (badge style baru)
+    // Status badge
     const statusCell = document.createElement('td');
     const badge = document.createElement('span');
-
     const rawStatus = (competition.status || '').toLowerCase();
     const statusMap = {
-      '': 'badge badge-neutral', // Unknown
+      '': 'badge badge-neutral',
       upcoming: 'badge badge-yellow',
       cancel: 'badge badge-red',
       finished: 'badge badge-green',
     };
-
     badge.className = statusMap[rawStatus] || 'badge badge-neutral';
-
-    const statusLabelMap = {
-      '': 'Unknown',
-      upcoming: 'Upcoming',
-      cancel: 'Cancel',
-      finished: 'Finished',
-    };
+    const statusLabelMap = { '': 'Unknown', upcoming: 'Upcoming', cancel: 'Cancel', finished: 'Finished' };
     badge.textContent = statusLabelMap[rawStatus] || 'Unknown';
-
     statusCell.appendChild(badge);
 
-    // Aksi (hapus saja, tanpa Edit)
+    // Aksi: Edit + Hapus
     const actionsCell = document.createElement('td');
+    actionsCell.className = 'actions-cell';
+
+    const editBtn = document.createElement('a');
+    editBtn.href = `editcompetition.html?id=${competition.id}`;
+    editBtn.className = 'btn btn-sm btn-secondary';
+    editBtn.textContent = 'Edit';
+
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'btn btn-sm btn-danger';
     deleteBtn.textContent = 'Hapus';
     deleteBtn.addEventListener('click', () =>
       handleDeleteCompetition(competition.id, competition.name),
     );
+
+    actionsCell.appendChild(editBtn);
     actionsCell.appendChild(deleteBtn);
 
     row.appendChild(indexCell);
@@ -142,25 +142,18 @@
     const { searchText, status, rank, prize } = getFiltersFromControls(prefix);
 
     return data.filter((c) => {
-      // Search nama
       if (searchText) {
         const name = (c.name || '').toLowerCase();
         if (!name.includes(searchText)) return false;
       }
-
-      // Status
       if (status) {
         const s = (c.status || '').toLowerCase();
         if (s !== status) return false;
       }
-
-      // Rank
       if (rank) {
         const r = (c.final_rank || '').toLowerCase();
         if (r !== rank.toLowerCase()) return false;
       }
-
-      // Prizepool
       if (prize) {
         const p = Number(c.prizepool || 0);
         if (prize === 'zero' && p !== 0) return false;
@@ -168,7 +161,6 @@
         if (prize === '10to50' && !(p >= 10_000_000 && p <= 50_000_000)) return false;
         if (prize === 'gt50' && !(p > 50_000_000)) return false;
       }
-
       return true;
     });
   }
@@ -180,84 +172,48 @@
     clearTableBody(tournamentBody);
     clearTableBody(leagueBody);
 
-    if (!allCompetitions || allCompetitions.length === 0) {
-      return;
-    }
+    if (!allCompetitions || allCompetitions.length === 0) return;
 
     const tournamentsAll = allCompetitions.filter((c) => c.type === 'tournament');
-    const leaguesAll = allCompetitions.filter((c) => c.type === 'league');
+    const leaguesAll     = allCompetitions.filter((c) => c.type === 'league');
 
     const tournaments = applyFilters(tournamentsAll, 'tournament');
-    const leagues = applyFilters(leaguesAll, 'league');
+    const leagues     = applyFilters(leaguesAll, 'league');
+
+    const emptyHtml = (type, label, addLabel) => `
+      <tr><td colspan="7">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+            <path d="M4 22h16"/>
+            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+          </svg>
+          <h3>${label}</h3>
+          <p>Mulai dengan menambahkan ${type} pertama tim kamu</p>
+          <a href="addcompetition.html" class="btn btn-primary btn-sm">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            ${addLabel}
+          </a>
+        </div>
+      </td></tr>`;
 
     if (tournaments.length === 0) {
-      tournamentBody.innerHTML = `
-        <tr>
-          <td colspan="7">
-            <div class="empty-state">
-              <svg viewBox="0 0 24 24">
-                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
-                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
-                <path d="M4 22h16"/>
-                <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
-                <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
-                <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
-              </svg>
-              <h3>Belum ada turnamen</h3>
-              <p>Mulai dengan menambahkan turnamen pertama tim kamu</p>
-              <a href="addcompetition.html" class="btn btn-primary btn-sm">
-                <svg viewBox="0 0 24 24">
-                  <line x1="12" y1="5" x2="12" y2="19"/>
-                  <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Tambah Turnamen Baru
-              </a>
-            </div>
-          </td>
-        </tr>
-      `;
+      tournamentBody.innerHTML = emptyHtml('turnamen', 'Belum ada turnamen', 'Tambah Turnamen Baru');
     } else {
-      tournaments.forEach((competition, index) => {
-        const row = createCompetitionRow(competition, index);
-        tournamentBody.appendChild(row);
-      });
+      tournaments.forEach((c, i) => tournamentBody.appendChild(createCompetitionRow(c, i)));
     }
 
     if (leagues.length === 0) {
-      leagueBody.innerHTML = `
-        <tr>
-          <td colspan="7">
-            <div class="empty-state">
-              <svg viewBox="0 0 24 24">
-                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
-                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
-                <path d="M4 22h16"/>
-                <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
-                <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
-                <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
-              </svg>
-              <h3>Belum ada liga</h3>
-              <p>Mulai dengan menambahkan liga pertama tim kamu</p>
-              <a href="addcompetition.html" class="btn btn-primary btn-sm">
-                <svg viewBox="0 0 24 24">
-                  <line x1="12" y1="5" x2="12" y2="19"/>
-                  <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Tambah Liga Baru
-              </a>
-            </div>
-          </td>
-        </tr>
-      `;
+      leagueBody.innerHTML = emptyHtml('liga', 'Belum ada liga', 'Tambah Liga Baru');
     } else {
-      leagues.forEach((competition, index) => {
-        const row = createCompetitionRow(competition, index);
-        leagueBody.appendChild(row);
-      });
+      leagues.forEach((c, i) => leagueBody.appendChild(createCompetitionRow(c, i)));
     }
   }
 
-  // -------- Toolbar (search + filter) reusable --------
+  // -------- Toolbar --------
 
   function createTableToolbar({ prefix, title, container }) {
     if (!container) return null;
@@ -265,95 +221,50 @@
     const toolbar = document.createElement('div');
     toolbar.className = 'table-toolbar';
 
-    const left = document.createElement('div');
+    const left  = document.createElement('div');
     left.className = 'table-toolbar-left';
-
     const right = document.createElement('div');
     right.className = 'table-toolbar-right';
 
-    // Search
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
     searchInput.id = `${prefix}Search`;
     searchInput.className = 'form-input form-input-sm table-search-input';
     searchInput.placeholder = `Cari ${title}`;
-    searchInput.addEventListener('input', () => {
-      renderFilteredTables();
-    });
+    searchInput.addEventListener('input', renderFilteredTables);
     left.appendChild(searchInput);
 
-    // Filter Status
-    const statusSelect = document.createElement('select');
-    statusSelect.id = `${prefix}FilterStatus`;
-    statusSelect.className = 'form-select form-select-sm table-filter-select';
-    statusSelect.innerHTML = `
-      <option value="">Status: Semua</option>
-      <option value="upcoming">Upcoming</option>
-      <option value="cancel">Cancel</option>
-      <option value="finished">Finished</option>
-    `;
-    statusSelect.addEventListener('change', () => {
-      renderFilteredTables();
-    });
+    const makeSelect = (id, placeholder, options) => {
+      const sel = document.createElement('select');
+      sel.id = id;
+      sel.className = 'form-select form-select-sm table-filter-select';
+      sel.innerHTML = `<option value="">${placeholder}</option>` +
+        options.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+      sel.addEventListener('change', renderFilteredTables);
+      return sel;
+    };
 
-    // Filter Rank
-    const rankSelect = document.createElement('select');
-    rankSelect.id = `${prefix}FilterRank`;
-    rankSelect.className = 'form-select form-select-sm table-filter-select';
-    rankSelect.innerHTML = `
-      <option value="">Rank: Semua</option>
-      <option value="1st">1st</option>
-      <option value="2nd">2nd</option>
-      <option value="3rd">3rd</option>
-      <option value="4th">4th</option>
-      <option value="8th">8th</option>
-      <option value="16th">16th</option>
-      <option value="failed">Failed</option>
-    `;
-    rankSelect.addEventListener('change', () => {
-      renderFilteredTables();
-    });
-
-    // Filter Prizepool
-    const prizeSelect = document.createElement('select');
-    prizeSelect.id = `${prefix}FilterPrize`;
-    prizeSelect.className = 'form-select form-select-sm table-filter-select';
-    prizeSelect.innerHTML = `
-      <option value="">Prizepool: Semua</option>
-      <option value="zero">0</option>
-      <option value="lt10">&lt; 10 Juta</option>
-      <option value="10to50">10–50 Juta</option>
-      <option value="gt50">&gt; 50 Juta</option>
-    `;
-    prizeSelect.addEventListener('change', () => {
-      renderFilteredTables();
-    });
-
-    right.appendChild(statusSelect);
-    right.appendChild(rankSelect);
-    right.appendChild(prizeSelect);
+    right.appendChild(makeSelect(`${prefix}FilterStatus`, 'Status: Semua', [
+      ['upcoming','Upcoming'], ['cancel','Cancel'], ['finished','Finished'],
+    ]));
+    right.appendChild(makeSelect(`${prefix}FilterRank`, 'Rank: Semua', [
+      ['1st','1st'], ['2nd','2nd'], ['3rd','3rd'], ['4th','4th'],
+      ['8th','8th'], ['16th','16th'], ['failed','Failed'],
+    ]));
+    right.appendChild(makeSelect(`${prefix}FilterPrize`, 'Prizepool: Semua', [
+      ['zero','0'], ['lt10','< 10 Juta'], ['10to50','10–50 Juta'], ['gt50','> 50 Juta'],
+    ]));
 
     toolbar.appendChild(left);
     toolbar.appendChild(right);
-
-    // Sisipkan sebelum .table-wrap
     container.parentElement.insertBefore(toolbar, container);
-
     return toolbar;
   }
 
   function setupToolbars() {
     const { tournamentTableWrap, leagueTableWrap } = getElements();
-    createTableToolbar({
-      prefix: 'tournament',
-      title: 'turnamen',
-      container: tournamentTableWrap,
-    });
-    createTableToolbar({
-      prefix: 'league',
-      title: 'liga',
-      container: leagueTableWrap,
-    });
+    createTableToolbar({ prefix: 'tournament', title: 'turnamen', container: tournamentTableWrap });
+    createTableToolbar({ prefix: 'league',     title: 'liga',     container: leagueTableWrap });
   }
 
   // -------- Fetch & init --------
@@ -363,10 +274,7 @@
     return fetch(`${apiBase}competition_api.php?action=list`)
       .then(async (response) => {
         const json = await response.json().catch(() => null);
-        if (!response.ok || !json || !json.ok) {
-          const message = (json && json.message) || 'Gagal memuat data kompetisi.';
-          throw new Error(message);
-        }
+        if (!response.ok || !json || !json.ok) throw new Error((json && json.message) || 'Gagal memuat data kompetisi.');
         return json.competitions || [];
       })
       .catch((error) => {

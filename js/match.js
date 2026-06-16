@@ -97,7 +97,7 @@
 
   function renderEmptyState(tbody, isFiltered) {
     tbody.innerHTML = `
-      <tr><td colspan="7">
+      <tr><td colspan="8">
         <div class="empty-state">
           <svg viewBox="0 0 24 24">
             <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -137,13 +137,14 @@
         <tr>
           <td>${i + 1}</td>
           <td>
-            <a href="editmatch.html?id=${m.id}" class="link-primary">${m.opponent_name || '-'}</a>
+            <a href="game.html?match_id=${m.id}" class="link-primary">${m.opponent_name || '-'}</a>
           </td>
           <td>${formatTypeLabel(m.type)}</td>
           <td>${our}:${opp}&nbsp;${resultBadgeHtml(our, opp, m.result)}</td>
           <td>${m.format || '-'}</td>
           <td>${statusBadgeHtml(m.status)}</td>
           <td>
+            <a href="editmatch.html?id=${m.id}" class="btn btn-sm btn-secondary">Edit</a>
             <button class="btn btn-sm btn-danger" data-id="${m.id}" data-name="${safeOpponent}">
               Hapus
             </button>
@@ -177,13 +178,11 @@
     const toolbar = document.createElement('div');
     toolbar.className = 'table-toolbar';
 
-    const left = document.createElement('div');
+    const left  = document.createElement('div');
     left.className = 'table-toolbar-left';
-
     const right = document.createElement('div');
     right.className = 'table-toolbar-right';
 
-    // Search
     const searchInput = document.createElement('input');
     searchInput.type = 'text';
     searchInput.id = 'matchSearch';
@@ -192,32 +191,18 @@
     searchInput.addEventListener('input', renderFilteredTable);
     left.appendChild(searchInput);
 
-    // Filter Kategori
     right.appendChild(makeSelect('matchFilterKategori', 'Kategori: Semua', [
-      ['tournament', 'Tournament'],
-      ['league',     'League'],
-      ['scrim',      'Scrim'],
-      ['ranked',     'Ranked'],
+      ['tournament','Tournament'], ['league','League'], ['scrim','Scrim'], ['ranked','Ranked'],
     ]));
-
-    // Filter Format
     right.appendChild(makeSelect('matchFilterFormat', 'Format: Semua', [
-      ['BO1', 'BO1'], ['BO2', 'BO2'], ['BO3', 'BO3'],
-      ['BO4', 'BO4'], ['BO5', 'BO5'], ['BO7', 'BO7'],
+      ['BO1','BO1'], ['BO2','BO2'], ['BO3','BO3'],
+      ['BO4','BO4'], ['BO5','BO5'], ['BO7','BO7'],
     ]));
-
-    // Filter Status
     right.appendChild(makeSelect('matchFilterStatus', 'Status: Semua', [
-      ['upcoming', 'Upcoming'],
-      ['finished', 'Finished'],
-      ['cancel',   'Cancel'],
+      ['upcoming','Upcoming'], ['finished','Finished'], ['cancel','Cancel'],
     ]));
-
-    // Filter Result
     right.appendChild(makeSelect('matchFilterResult', 'Result: Semua', [
-      ['win',  'Win'],
-      ['draw', 'Draw'],
-      ['lose', 'Lose'],
+      ['win','Win'], ['draw','Draw'], ['lose','Lose'],
     ]));
 
     toolbar.appendChild(left);
