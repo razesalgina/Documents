@@ -169,6 +169,7 @@
                   placeholder="Contoh: 1500000"
                 />
               </div>
+              
               <div class="form-group">
                 <label class="form-label" for="prizepool">Prizepool</label>
                 <input
@@ -197,6 +198,7 @@
                   <option value="failed">Failed</option>
                 </select>
               </div>
+
               <div class="form-group">
                 <label class="form-label" for="competitionStatus">Status</label>
                 <select class="form-select" id="competitionStatus" name="competitionStatus">
@@ -211,14 +213,17 @@
             <!-- Jumlah tim & jumlah fase -->
             <div class="form-grid-2">
               <div class="form-group">
-                <label class="form-label" for="StartDate">Tanggal Mulai</label>
+                <label class="form-label" for="teamCount">Total Tim</label>
                 <input
                   class="form-input"
-                  type="date"
-                  id="StartDate"
-                  name="StartDate"
+                  type="number"
+                  id="teamCount"
+                  name="teamCount"
+                  min="4"
+                  placeholder="Contoh: 8"
                 />
               </div>
+            
               <div class="form-group">
                 <label class="form-label" for="phaseCount">Jumlah Fase</label>
                 <select class="form-select" id="phaseCount" name="phaseCount">
