@@ -1,379 +1,290 @@
 // js/addgame.js
 (function () {
   const REDIRECT_DELAY_MS = 1500;
+  const ROLES = [
+    { key: 'jungler',   label: 'Jungler' },
+    { key: 'roamer',    label: 'Roamer' },
+    { key: 'midlaner',  label: 'Mid Laner' },
+    { key: 'explaner',  label: 'Exp Laner' },
+    { key: 'goldlaner', label: 'Gold Laner' },
+  ];
 
-  function getElements() {
-    return {
-      tahap1Section: document.getElementById('tahap1'),
-      tahap2Section: document.getElementById('tahap2'),
-      nextButton: document.getElementById('btnNextStep'),
-      backButton: document.getElementById('btnBackStep'),
-      submitButton: document.getElementById('btnSubmitAll'),
-      gameNumberSelect: document.getElementById('gameNumber'),
-      gameResultSelect: document.getElementById('gameResult'),
-      teamKillsInput: document.getElementById('teamKills'),
-      teamDeathsInput: document.getElementById('teamDeaths'),
-      durationMinInput: document.getElementById('gameDurationMin'),
-      durationSecInput: document.getElementById('gameDurationSec'),
-      playerContainer: document.getElementById('playerContainer'),
-    };
-  }
+  // ── State ───────────────────────────────────
+  let matchId    = 0;
+  let gameNumber = 0; // akan di-set setelah fetch
 
-  function showToast(message, type) {
+  const apiBase = () => window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
+
+  // ── Toast ──────────────────────────────────
+  function showToast(msg, type) {
     if (window.Esport && typeof window.Esport.showToast === 'function') {
-      window.Esport.showToast(message, type);
+      window.Esport.showToast(msg, type);
     }
   }
-  
-  function clearStep1Errors() {
-    const {
-      teamKillsInput,
-      teamDeathsInput,
-      durationMinInput,
-      durationSecInput,
-    } = getElements();
 
-    [teamKillsInput, teamDeathsInput, durationMinInput, durationSecInput]
-      .forEach((el) => {
-        if (el) {
-          el.classList.remove('field-error');
-        }
-      });
+  // ── URL helpers ─────────────────────────────
+  function getParam(name) {
+    return new URLSearchParams(window.location.search).get(name);
   }
 
-  function clearStep2Errors() {
-    const { playerContainer } = getElements();
-    if (!playerContainer) return;
+  // ── Update back-btn & breadcrumb ────────────────
+  function updateNavLinks(mid) {
+    const gameUrl = `game.html?match_id=${mid}`;
+    const backBtn = document.getElementById('backBtn');
+    const breadcrumbGame = document.getElementById('breadcrumbGame');
+    if (backBtn)        backBtn.href = gameUrl;
+    if (breadcrumbGame) breadcrumbGame.href = gameUrl;
+  }
 
-    const errorFields = playerContainer.querySelectorAll('.field-error');
-    errorFields.forEach((el) => {
-      el.classList.remove('field-error');
+  // ── Populate dropdowns ────────────────────────
+  function populateDropdowns(players, heroes) {
+    const allPlayerSelects = document.querySelectorAll('.select-player');
+    const allHeroSelects   = document.querySelectorAll('.select-hero');
+
+    const playerOpts = players
+      .map((p) => `<option value="${p.name}">${p.name} (${p.primary_role})</option>`)
+      .join('');
+    const heroOpts = heroes
+      .map((h) => `<option value="${h}">${h}</option>`)
+      .join('');
+
+    allPlayerSelects.forEach((sel) => {
+      sel.innerHTML = `<option value="" disabled selected>Pilih Pemain</option>${playerOpts}`;
     });
-  }  
+    allHeroSelects.forEach((sel) => {
+      sel.innerHTML = `<option value="" disabled selected>Pilih Hero</option>${heroOpts}`;
+    });
+  }
 
-  function markFieldError(element) {
-    if (!element) return;
-    element.classList.add('field-error');
+  async function loadDropdowns() {
+    try {
+      const [pRes, hRes] = await Promise.all([
+        fetch(`${apiBase()}game_api.php?action=players`),
+        fetch(`${apiBase()}game_api.php?action=heroes`),
+      ]);
+      const pJson = await pRes.json().catch(() => null);
+      const hJson = await hRes.json().catch(() => null);
+      const players = (pJson && pJson.ok) ? pJson.players : [];
+      const heroes  = (hJson && hJson.ok) ? hJson.heroes  : [];
+      populateDropdowns(players, heroes);
+    } catch (_) {
+      showToast('Gagal memuat data pemain / hero.', 'error');
+    }
+  }
+
+  // ── Fetch auto game_number preview ──────────────
+  async function loadGameNumber() {
+    if (matchId <= 0) return;
+    try {
+      const res  = await fetch(`${apiBase()}game_api.php?action=list&match_id=${matchId}`);
+      const json = await res.json().catch(() => null);
+      const count = (json && json.ok) ? (json.games || []).length : 0;
+      gameNumber = count + 1;
+      const el = document.getElementById('gameNumberDisplay');
+      if (el) el.textContent = `Game ${gameNumber}`;
+    } catch (_) { /* silent */ }
+  }
+
+  // ── Role tab switching (fase pattern) ────────────
+  function updateRoleProgress() {
+    let filled = 0;
+    ROLES.forEach(({ key }) => {
+      const card = document.getElementById(`card-${key}`);
+      if (!card) return;
+      const player = card.querySelector('.select-player');
+      const hero   = card.querySelector('.select-hero');
+      const kills  = card.querySelector('.input-kills');
+      const deaths = card.querySelector('.input-deaths');
+      const assists = card.querySelector('.input-assists');
+      const gold   = card.querySelector('.input-gold');
+      if (player && player.value &&
+          hero   && hero.value &&
+          kills  && kills.value.trim() !== '' &&
+          deaths && deaths.value.trim() !== '' &&
+          assists && assists.value.trim() !== '' &&
+          gold   && gold.value.trim() !== '') {
+        filled++;
+      }
+    });
+    const el = document.getElementById('roleProgress');
+    if (el) el.textContent = `${filled} / 5 role`;
+  }
+
+  function switchRole(roleKey) {
+    ROLES.forEach(({ key }) => {
+      const card = document.getElementById(`card-${key}`);
+      if (card) card.classList.toggle('hidden', key !== roleKey);
+    });
+  }
+
+  function attachRoleTabListeners() {
+    const radios = document.querySelectorAll('input[name="activeRole"]');
+    radios.forEach((radio) => {
+      radio.addEventListener('change', () => {
+        switchRole(radio.value);
+        updateRoleProgress();
+      });
+    });
+    // Update progress on any input change
+    const container = document.getElementById('playerContainer');
+    if (container) {
+      container.addEventListener('change', updateRoleProgress);
+      container.addEventListener('input',  updateRoleProgress);
+    }
+  }
+
+  // ── Validation helpers ────────────────────────
+  function markError(el) { if (el) el.classList.add('field-error'); }
+  function clearErrors() {
+    document.querySelectorAll('.field-error').forEach((el) => el.classList.remove('field-error'));
   }
 
   function validateStep1() {
-    const {
-      gameNumberSelect,
-      gameResultSelect,
-      teamKillsInput,
-      teamDeathsInput,
-      durationMinInput,
-      durationSecInput,
-    } = getElements();
+    clearErrors();
+    const kills   = document.getElementById('teamKills');
+    const deaths  = document.getElementById('teamDeaths');
+    const durMin  = document.getElementById('gameDurationMin');
+    const durSec  = document.getElementById('gameDurationSec');
 
-    if (
-      !gameNumberSelect ||
-      !gameResultSelect ||
-      !teamKillsInput ||
-      !teamDeathsInput ||
-      !durationMinInput ||
-      !durationSecInput
-    ) {
-      return { valid: false, message: 'Form tidak lengkap.' };
+    if (!kills || kills.value.trim() === '')   { markError(kills);  return { valid: false, message: 'Total kills wajib diisi.' }; }
+    if (!deaths || deaths.value.trim() === '')  { markError(deaths); return { valid: false, message: 'Total deaths wajib diisi.' }; }
+    if (!durMin || durMin.value.trim() === '')  { markError(durMin); return { valid: false, message: 'Menit durasi wajib diisi.' }; }
+    if (!durSec || durSec.value.trim() === '')  { markError(durSec); return { valid: false, message: 'Detik durasi wajib diisi.' }; }
+    if (Number(durSec.value) < 0 || Number(durSec.value) > 59) {
+      markError(durSec);
+      return { valid: false, message: 'Detik harus 0–59.' };
     }
-
-    clearStep1Errors();
-
-    let firstErrorField = null;
-
-    function setError(field, message) {
-      markFieldError(field);
-      if (!firstErrorField) {
-        firstErrorField = field;
-      }
-      throw new Error(message);
-    }
-
-    try {
-      // Cek kosong (user belum isi)
-      if (teamKillsInput.value.trim() === '') {
-        setError(teamKillsInput, 'Total kills tim wajib diisi.');
-      }
-
-      if (teamDeathsInput.value.trim() === '') {
-        setError(teamDeathsInput, 'Total deaths tim wajib diisi.');
-      }
-
-      if (durationMinInput.value.trim() === '') {
-        setError(durationMinInput, 'Menit durasi wajib diisi.');
-      }
-
-      if (durationSecInput.value.trim() === '') {
-        setError(durationSecInput, 'Detik durasi wajib diisi.');
-      }
-
-      const kills = Number(teamKillsInput.value);
-      const deaths = Number(teamDeathsInput.value);
-      const minutes = Number(durationMinInput.value);
-      const seconds = Number(durationSecInput.value);
-
-      if (Number.isNaN(kills) || kills < 0) {
-        setError(teamKillsInput, 'Total kills tidak boleh negatif.');
-      }
-
-      if (Number.isNaN(deaths) || deaths < 0) {
-        setError(teamDeathsInput, 'Total deaths tidak boleh negatif.');
-      }
-
-      if (Number.isNaN(minutes) || minutes < 0) {
-        setError(durationMinInput, 'Menit durasi tidak valid.');
-      }
-
-      if (Number.isNaN(seconds) || seconds < 0 || seconds > 59) {
-        setError(durationSecInput, 'Detik durasi harus 0–59.');
-      }
-    } catch (error) {
-      if (firstErrorField && typeof firstErrorField.focus === 'function') {
-        firstErrorField.focus();
-      }
-      return { valid: false, message: error.message };
-    }
-
-    return { valid: true, message: '' };
+    return { valid: true };
   }
 
-  function getGameInfo() {
-    const {
-      gameNumberSelect,
-      gameResultSelect,
-      teamKillsInput,
-      teamDeathsInput,
-      durationMinInput,
-      durationSecInput,
-    } = getElements();
+  function validateStep2() {
+    clearErrors();
+    for (const { key, label } of ROLES) {
+      const card    = document.getElementById(`card-${key}`);
+      if (!card) continue;
+      const player  = card.querySelector('.select-player');
+      const hero    = card.querySelector('.select-hero');
+      const kills   = card.querySelector('.input-kills');
+      const deaths  = card.querySelector('.input-deaths');
+      const assists = card.querySelector('.input-assists');
+      const gold    = card.querySelector('.input-gold');
 
+      if (!player || !player.value) {
+        // Switch ke role yang error
+        switchRole(key);
+        document.querySelector(`input[name="activeRole"][value="${key}"]`).checked = true;
+        markError(player);
+        return { valid: false, message: `Pilih pemain untuk ${label}.` };
+      }
+      if (!hero || !hero.value) {
+        switchRole(key);
+        document.querySelector(`input[name="activeRole"][value="${key}"]`).checked = true;
+        markError(hero);
+        return { valid: false, message: `Pilih hero untuk ${label}.` };
+      }
+      if (!kills || kills.value.trim() === '') {
+        switchRole(key); document.querySelector(`input[name="activeRole"][value="${key}"]`).checked = true;
+        markError(kills); return { valid: false, message: `Kill untuk ${label} wajib diisi.` };
+      }
+      if (!deaths || deaths.value.trim() === '') {
+        switchRole(key); document.querySelector(`input[name="activeRole"][value="${key}"]`).checked = true;
+        markError(deaths); return { valid: false, message: `Death untuk ${label} wajib diisi.` };
+      }
+      if (!assists || assists.value.trim() === '') {
+        switchRole(key); document.querySelector(`input[name="activeRole"][value="${key}"]`).checked = true;
+        markError(assists); return { valid: false, message: `Assist untuk ${label} wajib diisi.` };
+      }
+      if (!gold || gold.value.trim() === '') {
+        switchRole(key); document.querySelector(`input[name="activeRole"][value="${key}"]`).checked = true;
+        markError(gold); return { valid: false, message: `Total Gold untuk ${label} wajib diisi.` };
+      }
+    }
+    return { valid: true };
+  }
+
+  // ── Collect data ─────────────────────────────
+  function getGameInfo() {
     return {
-      gameNumber: gameNumberSelect ? Number(gameNumberSelect.value) : 1,
-      result: gameResultSelect ? gameResultSelect.value : 'win',
-      teamKills: teamKillsInput ? Number(teamKillsInput.value) : 0,
-      teamDeaths: teamDeathsInput ? Number(teamDeathsInput.value) : 0,
-      durationMinutes: durationMinInput ? Number(durationMinInput.value) : 0,
-      durationSeconds: durationSecInput ? Number(durationSecInput.value) : 0,
+      matchId,
+      result:          document.getElementById('gameResult')?.value || 'win',
+      teamKills:       Number(document.getElementById('teamKills')?.value) || 0,
+      teamDeaths:      Number(document.getElementById('teamDeaths')?.value) || 0,
+      durationMinutes: Number(document.getElementById('gameDurationMin')?.value) || 0,
+      durationSeconds: Number(document.getElementById('gameDurationSec')?.value) || 0,
     };
   }
 
   function getPlayerStats() {
-    const { playerContainer } = getElements();
-    if (!playerContainer) return [];
-
-    const roleCards = playerContainer.querySelectorAll('.role-card');
-    const playersStats = [];
-
-    roleCards.forEach((card) => {
-      const roleNameElement = card.querySelector('.role-name');
-      const playerSelect = card.querySelector('.select-player');
-      const heroSelect = card.querySelector('.select-hero');
-      const killsInput = card.querySelector('.input-kills');
-      const deathsInput = card.querySelector('.input-deaths');
-      const assistsInput = card.querySelector('.input-assists');
-      const goldInput = card.querySelector('.input-gold');
-
-      playersStats.push({
-        roleName: roleNameElement ? roleNameElement.textContent.trim() : '',
-        playerName: playerSelect ? playerSelect.value : '',
-        heroName: heroSelect ? heroSelect.value : '',
-        kills: killsInput ? Number(killsInput.value) : 0,
-        deaths: deathsInput ? Number(deathsInput.value) : 0,
-        assists: assistsInput ? Number(assistsInput.value) : 0,
-        totalGold: goldInput ? Number(goldInput.value) : 0,
-      });
+    return ROLES.map(({ key, label }) => {
+      const card = document.getElementById(`card-${key}`);
+      return {
+        roleName:   key,
+        playerName: card?.querySelector('.select-player')?.value || '',
+        heroName:   card?.querySelector('.select-hero')?.value   || '',
+        kills:      Number(card?.querySelector('.input-kills')?.value)   || 0,
+        deaths:     Number(card?.querySelector('.input-deaths')?.value)  || 0,
+        assists:    Number(card?.querySelector('.input-assists')?.value) || 0,
+        totalGold:  Number(card?.querySelector('.input-gold')?.value)    || 0,
+      };
     });
-
-    return playersStats;
-  }  
-
-  function validateStep2() {
-    const { playerContainer } = getElements();
-    if (!playerContainer) {
-      return { valid: false, message: 'Container player tidak ditemukan.' };
-    }
-
-    clearStep2Errors();
-
-    const roleCards = playerContainer.querySelectorAll('.role-card');
-    if (roleCards.length === 0) {
-      return { valid: false, message: 'Tidak ada data role pemain.' };
-    }
-
-    let firstErrorField = null;
-
-    for (const card of roleCards) {
-      const roleNameElement = card.querySelector('.role-name');
-      const playerSelect = card.querySelector('.select-player');
-      const heroSelect = card.querySelector('.select-hero');
-      const killsInput = card.querySelector('.input-kills');
-      const deathsInput = card.querySelector('.input-deaths');
-      const assistsInput = card.querySelector('.input-assists');
-      const goldInput = card.querySelector('.input-gold');
-
-      const roleName = roleNameElement ? roleNameElement.textContent.trim() : 'Role';
-
-      // Helper lokal untuk set error dan simpan field pertama yang error
-      function setError(element, message) {
-        markFieldError(element);
-        if (!firstErrorField) {
-          firstErrorField = element;
-        }
-        throw new Error(message); // untuk keluar dari loop dengan pesan
-      }
-
-      try {
-        if (!playerSelect || playerSelect.value.trim() === '') {
-          setError(playerSelect, `Pilih pemain untuk ${roleName}.`);
-        }
-
-        if (!heroSelect || heroSelect.value.trim() === '') {
-          setError(heroSelect, `Pilih hero untuk ${roleName}.`);
-        }
-
-        if (!killsInput || killsInput.value.trim() === '') {
-          setError(killsInput, `Kolom Kill untuk ${roleName} wajib diisi.`);
-        }
-
-        if (!deathsInput || deathsInput.value.trim() === '') {
-          setError(deathsInput, `Kolom Death untuk ${roleName} wajib diisi.`);
-        }
-
-        if (!assistsInput || assistsInput.value.trim() === '') {
-          setError(assistsInput, `Kolom Assist untuk ${roleName} wajib diisi.`);
-        }
-
-        if (!goldInput || goldInput.value.trim() === '') {
-          setError(goldInput, `Total Gold untuk ${roleName} wajib diisi.`);
-        }
-
-        const kills = Number(killsInput.value);
-        const deaths = Number(deathsInput.value);
-        const assists = Number(assistsInput.value);
-        const totalGold = Number(goldInput.value);
-
-        if (Number.isNaN(kills) || kills < 0) {
-          setError(killsInput, `Kill untuk ${roleName} tidak boleh negatif.`);
-        }
-
-        if (Number.isNaN(deaths) || deaths < 0) {
-          setError(deathsInput, `Death untuk ${roleName} tidak boleh negatif.`);
-        }
-
-        if (Number.isNaN(assists) || assists < 0) {
-          setError(assistsInput, `Assist untuk ${roleName} tidak boleh negatif.`);
-        }
-
-        if (Number.isNaN(totalGold) || totalGold < 0) {
-          setError(goldInput, `Total Gold untuk ${roleName} tidak boleh negatif.`);
-        }
-      } catch (e) {
-        // e.message akan berisi pesan pertama yang kita lempar
-        if (firstErrorField && typeof firstErrorField.focus === 'function') {
-          firstErrorField.focus();
-        }
-        return { valid: false, message: e.message };
-      }
-    }
-
-    return { valid: true, message: '' };
   }
 
+  // ── Step navigation ───────────────────────────
   function goToStep2() {
-    const { tahap1Section, tahap2Section } = getElements();
-    if (!tahap1Section || !tahap2Section) return;
-
-    tahap1Section.classList.add('hidden');
-    tahap2Section.classList.remove('hidden');
+    document.getElementById('tahap1')?.classList.add('hidden');
+    document.getElementById('tahap2')?.classList.remove('hidden');
+    updateRoleProgress();
   }
-
   function goToStep1() {
-    const { tahap1Section, tahap2Section } = getElements();
-    if (!tahap1Section || !tahap2Section) return;
-
-    tahap2Section.classList.add('hidden');
-    tahap1Section.classList.remove('hidden');
+    document.getElementById('tahap2')?.classList.add('hidden');
+    document.getElementById('tahap1')?.classList.remove('hidden');
   }
 
   function handleNextStep() {
-    const validation = validateStep1();
-    if (!validation.valid) {
-      showToast(validation.message, 'error');
-      return;
-    }
-
+    const v = validateStep1();
+    if (!v.valid) { showToast(v.message, 'error'); return; }
     goToStep2();
   }
 
-  function handleBackStep() {
-    goToStep1();
-  }
-
+  // ── Submit ──────────────────────────────────
   function handleSubmitAll() {
-    const step2Validation = validateStep2();
-    if (!step2Validation.valid) {
-      showToast(step2Validation.message, 'error');
-      return;
-    }
+    const v = validateStep2();
+    if (!v.valid) { showToast(v.message, 'error'); return; }
 
-    const gameInfo = getGameInfo();
-    const playerStats = getPlayerStats();
+    const payload = { game: getGameInfo(), players: getPlayerStats() };
 
-    // TODO: jika nanti ada matchId di query string, masukkan ke gameInfo.matchId
-    const payload = {
-      game: gameInfo,
-      players: playerStats,
-    };
-
-    const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
-    fetch(`${apiBase}save_game.php`, {
+    fetch(`${apiBase()}save_game.php`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-      .then(async (response) => {
-        const json = await response.json().catch(() => null);
-        if (!response.ok || !json || !json.ok) {
-          const message = (json && json.message) || 'Gagal menyimpan game.';
-          throw new Error(message);
-        }
+      .then(async (res) => {
+        const json = await res.json().catch(() => null);
+        if (!res.ok || !json || !json.ok) throw new Error((json && json.message) || 'Gagal menyimpan game.');
         return json;
       })
       .then(() => {
         showToast('Game berhasil disimpan!', 'success');
         setTimeout(() => {
-          window.location.href = 'game.html';
+          window.location.href = `game.html?match_id=${matchId}`;
         }, REDIRECT_DELAY_MS);
       })
-      .catch((error) => {
-        showToast(error.message || 'Terjadi kesalahan saat menyimpan game.', 'error');
-      });
+      .catch((err) => showToast(err.message || 'Terjadi kesalahan.', 'error'));
   }
 
-  function attachEventListeners() {
-    const { nextButton, backButton, submitButton } = getElements();
-
-    if (nextButton) {
-      nextButton.addEventListener('click', handleNextStep);
-    }
-
-    if (backButton) {
-      backButton.addEventListener('click', handleBackStep);
-    }
-
-    if (submitButton) {
-      submitButton.addEventListener('click', handleSubmitAll);
-    }
-  }
-
-  function initAddGamePage() {
-    attachEventListeners();
-    // TODO: isi dropdown pemain & hero jika ada sumber datanya
-  }
-
+  // ── Init ────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
-    initAddGamePage();
+    matchId = parseInt(getParam('match_id') || '0', 10);
+    if (matchId <= 0) showToast('match_id tidak ditemukan di URL.', 'error');
+
+    updateNavLinks(matchId);
+    loadDropdowns();
+    loadGameNumber();
+    attachRoleTabListeners();
+
+    document.getElementById('btnNextStep')?.addEventListener('click', handleNextStep);
+    document.getElementById('btnBackStep')?.addEventListener('click', goToStep1);
+    document.getElementById('btnSubmitAll')?.addEventListener('click', handleSubmitAll);
   });
+
 })();

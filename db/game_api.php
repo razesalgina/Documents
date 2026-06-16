@@ -6,7 +6,7 @@ require __DIR__ . '/db.php';
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? $_POST['action'] ?? '';
 
-// ── GET: games by match_id ──────────────────────
+// ── GET: list games ─────────────────────────────
 if ($method === 'GET' && $action === 'list') {
     $matchId = isset($_GET['match_id']) ? (int)$_GET['match_id'] : 0;
     if ($matchId <= 0) {
@@ -15,7 +15,6 @@ if ($method === 'GET' && $action === 'list') {
         exit;
     }
     try {
-        // Games
         $stmt = $pdo->prepare(
             'SELECT id, match_id, game_number, result, team_kills, team_deaths,
                     duration_minutes, duration_seconds, created_at
@@ -26,15 +25,12 @@ if ($method === 'GET' && $action === 'list') {
         $stmt->execute([':match_id' => $matchId]);
         $games = $stmt->fetchAll();
 
-        // MVP per game: player dengan KDA tertinggi
-        // KDA = (kills + assists) / MAX(deaths, 1)
         if (!empty($games)) {
-            $gameIds = array_column($games, 'id');
-            $inClause = implode(',', array_fill(0, count($gameIds), '?'));
+            $gameIds   = array_column($games, 'id');
+            $inClause  = implode(',', array_fill(0, count($gameIds), '?'));
 
             $mvpStmt = $pdo->prepare(
-                "SELECT gp.game_id,
-                        gp.player_name,
+                "SELECT gp.game_id, gp.player_name,
                         ROUND((gp.kills + gp.assists) / GREATEST(gp.deaths, 1), 2) AS kda
                  FROM game_players gp
                  INNER JOIN (
@@ -49,13 +45,10 @@ if ($method === 'GET' && $action === 'list') {
                  GROUP BY gp.game_id"
             );
             $mvpStmt->execute(array_merge($gameIds, $gameIds));
-            $mvpRows = $mvpStmt->fetchAll();
-
             $mvpMap = [];
-            foreach ($mvpRows as $row) {
+            foreach ($mvpStmt->fetchAll() as $row) {
                 $mvpMap[(int)$row['game_id']] = $row['player_name'];
             }
-
             foreach ($games as &$game) {
                 $game['mvp'] = $mvpMap[(int)$game['id']] ?? null;
             }
@@ -70,11 +63,74 @@ if ($method === 'GET' && $action === 'list') {
     exit;
 }
 
-// ── POST: delete ───────────────────────────────
+// ── GET: single game ───────────────────────────
+if ($method === 'GET' && $action === 'get') {
+    $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+    if ($id <= 0) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'message' => 'id tidak valid']);
+        exit;
+    }
+    try {
+        $stmt = $pdo->prepare(
+            'SELECT id, match_id, game_number, result, team_kills, team_deaths,
+                    duration_minutes, duration_seconds
+             FROM games WHERE id = :id'
+        );
+        $stmt->execute([':id' => $id]);
+        $game = $stmt->fetch();
+        if (!$game) {
+            http_response_code(404);
+            echo json_encode(['ok' => false, 'message' => 'Game tidak ditemukan']);
+            exit;
+        }
+
+        // Players
+        $pStmt = $pdo->prepare(
+            'SELECT role_name, player_name, hero_name, kills, deaths, assists, total_gold
+             FROM game_players WHERE game_id = :gid ORDER BY id ASC'
+        );
+        $pStmt->execute([':gid' => $id]);
+        $game['players'] = $pStmt->fetchAll();
+
+        echo json_encode(['ok' => true, 'game' => $game]);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'message' => 'Gagal mengambil detail game']);
+    }
+    exit;
+}
+
+// ── GET: players list ──────────────────────────
+if ($method === 'GET' && $action === 'players') {
+    try {
+        $stmt = $pdo->query('SELECT id, name, primary_role FROM players WHERE is_active = 1 ORDER BY name ASC');
+        echo json_encode(['ok' => true, 'players' => $stmt->fetchAll()]);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'message' => 'Gagal mengambil data pemain']);
+    }
+    exit;
+}
+
+// ── GET: heroes list ──────────────────────────
+if ($method === 'GET' && $action === 'heroes') {
+    try {
+        $stmt = $pdo->query('SELECT nama_hero FROM mlbb_heroes ORDER BY nama_hero ASC');
+        echo json_encode(['ok' => true, 'heroes' => $stmt->fetchAll(PDO::FETCH_COLUMN)]);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'message' => 'Gagal mengambil data hero']);
+    }
+    exit;
+}
+
+// ── POST ──────────────────────────────────────
 if ($method === 'POST') {
     $data   = json_decode(file_get_contents('php://input'), true) ?? [];
     $action = $data['action'] ?? $action;
 
+    // ── DELETE ──
     if ($action === 'delete') {
         $id = (int)($data['id'] ?? 0);
         if ($id <= 0) {
@@ -83,7 +139,6 @@ if ($method === 'POST') {
             exit;
         }
         try {
-            // Ambil game_number & match_id sebelum dihapus
             $sel = $pdo->prepare('SELECT match_id, game_number FROM games WHERE id = :id');
             $sel->execute([':id' => $id]);
             $game = $sel->fetch();
@@ -94,31 +149,80 @@ if ($method === 'POST') {
             }
 
             $pdo->beginTransaction();
-
-            // Hapus game_players dulu (FK)
-            $pdo->prepare('DELETE FROM game_players WHERE game_id = :id')
-                ->execute([':id' => $id]);
-
-            // Hapus game
-            $pdo->prepare('DELETE FROM games WHERE id = :id')
-                ->execute([':id' => $id]);
-
-            // Re-number: geser game_number games yang lebih besar dari yang dihapus
+            $pdo->prepare('DELETE FROM game_players WHERE game_id = :id')->execute([':id' => $id]);
+            $pdo->prepare('DELETE FROM games WHERE id = :id')->execute([':id' => $id]);
             $pdo->prepare(
-                'UPDATE games
-                 SET game_number = game_number - 1
-                 WHERE match_id = :match_id AND game_number > :game_number'
+                'UPDATE games SET game_number = game_number - 1
+                 WHERE match_id = :mid AND game_number > :gn'
+            )->execute([':mid' => $game['match_id'], ':gn' => $game['game_number']]);
+            $pdo->commit();
+
+            echo json_encode(['ok' => true]);
+        } catch (Throwable $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'message' => 'Gagal menghapus game']);
+        }
+        exit;
+    }
+
+    // ── UPDATE ──
+    if ($action === 'update') {
+        $id          = (int)($data['id'] ?? 0);
+        $gameInfo    = $data['game']    ?? null;
+        $playerStats = $data['players'] ?? null;
+
+        if ($id <= 0 || !$gameInfo || !$playerStats || !is_array($playerStats)) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'message' => 'Data tidak lengkap']);
+            exit;
+        }
+        try {
+            $pdo->beginTransaction();
+
+            $pdo->prepare(
+                'UPDATE games SET result=:result, team_kills=:tk, team_deaths=:td,
+                 duration_minutes=:dm, duration_seconds=:ds WHERE id=:id'
             )->execute([
-                ':match_id'    => $game['match_id'],
-                ':game_number' => $game['game_number'],
+                ':result' => $gameInfo['result'],
+                ':tk'     => $gameInfo['teamKills'],
+                ':td'     => $gameInfo['teamDeaths'],
+                ':dm'     => $gameInfo['durationMinutes'],
+                ':ds'     => $gameInfo['durationSeconds'],
+                ':id'     => $id,
             ]);
+
+            $pdo->prepare('DELETE FROM game_players WHERE game_id = :gid')
+                ->execute([':gid' => $id]);
+
+            $pStmt = $pdo->prepare(
+                'INSERT INTO game_players (game_id, role_name, player_name, hero_name, kills, deaths, assists, total_gold, kda)
+                 VALUES (:gid, :role, :player, :hero, :k, :d, :a, :g, :kda)'
+            );
+            foreach ($playerStats as $p) {
+                $k   = (int)($p['kills']   ?? 0);
+                $d   = (int)($p['deaths']  ?? 0);
+                $a   = (int)($p['assists'] ?? 0);
+                $kda = round(($k + $a) / max($d, 1), 2);
+                $pStmt->execute([
+                    ':gid'    => $id,
+                    ':role'   => $p['roleName'],
+                    ':player' => $p['playerName'],
+                    ':hero'   => $p['heroName'],
+                    ':k'      => $k,
+                    ':d'      => $d,
+                    ':a'      => $a,
+                    ':g'      => (int)($p['totalGold'] ?? 0),
+                    ':kda'    => $kda,
+                ]);
+            }
 
             $pdo->commit();
             echo json_encode(['ok' => true]);
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             http_response_code(500);
-            echo json_encode(['ok' => false, 'message' => 'Gagal menghapus game']);
+            echo json_encode(['ok' => false, 'message' => 'Gagal mengupdate game']);
         }
         exit;
     }

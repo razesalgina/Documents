@@ -1,33 +1,28 @@
 // js/game.js
 (function () {
 
-  // ── State ───────────────────────────────────
   let matchId   = 0;
-  let matchData = null; // { opponent_name, format }
+  let matchData = null;
 
   const apiBase = () => window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
 
-  // ── Toast ──────────────────────────────────
   function showToast(msg, type) {
     if (window.Esport && typeof window.Esport.showToast === 'function') {
       window.Esport.showToast(msg, type);
     }
   }
 
-  // ── Parse match_id from URL ─────────────────────
   function getMatchIdFromUrl() {
     const params = new URLSearchParams(window.location.search);
     return parseInt(params.get('match_id') || params.get('id') || '0', 10);
   }
 
-  // ── Max games from format string ─────────────────
   function maxGamesFromFormat(fmt) {
     if (!fmt) return Infinity;
     const n = parseInt(fmt.replace(/[^0-9]/g, ''), 10);
     return isNaN(n) ? Infinity : n;
   }
 
-  // ── Badge helpers ───────────────────────────
   function resultBadgeHtml(result) {
     const r = (result || '').toLowerCase();
     const map = { win: 'badge badge-green', lose: 'badge badge-red', draw: 'badge badge-yellow' };
@@ -43,10 +38,8 @@
     ].join(' ');
   }
 
-  // ── Update page title & heading ───────────────────
   function updateMatchMeta(match) {
     const opponentName = match.opponent_name || 'Match';
-    const fmt          = match.format ? ` — ${match.format}` : '';
 
     document.title = `Game vs ${opponentName} — Esport`;
 
@@ -54,7 +47,7 @@
     if (pageTitle) pageTitle.textContent = `Game vs ${opponentName}`;
 
     const pageSub = document.getElementById('pageSub');
-    if (pageSub) pageSub.textContent = `Format: ${match.format || '-'}${fmt ? '' : ''}  |  Lihat semua game dalam match ini`;
+    if (pageSub) pageSub.textContent = `Format: ${match.format || '-'}  |  Lihat semua game dalam match ini`;
 
     const breadcrumbMatch = document.getElementById('breadcrumbMatch');
     if (breadcrumbMatch) breadcrumbMatch.textContent = opponentName;
@@ -69,7 +62,6 @@
     }
   }
 
-  // ── Render table ──────────────────────────────
   function renderGames(games) {
     const tbody    = document.getElementById('gameBody');
     const countEl  = document.getElementById('gameCount');
@@ -80,23 +72,18 @@
       countEl.textContent = `${games.length}${remaining} game`;
     }
 
-    // Tampilkan / sembunyikan tombol Tambah Game
     const addGameBtn = document.getElementById('addGameBtn');
     if (addGameBtn) {
-      if (games.length >= maxGames) {
-        addGameBtn.classList.add('hidden');
-        addGameBtn.setAttribute('aria-disabled', 'true');
-      } else {
-        addGameBtn.classList.remove('hidden');
-        addGameBtn.removeAttribute('aria-disabled');
-      }
+      const full = games.length >= maxGames;
+      addGameBtn.classList.toggle('hidden', full);
+      full ? addGameBtn.setAttribute('aria-disabled', 'true') : addGameBtn.removeAttribute('aria-disabled');
     }
 
     if (!tbody) return;
 
     if (games.length === 0) {
       tbody.innerHTML = `
-        <tr><td colspan="6">
+        <tr><td colspan="7">
           <div class="empty-state">
             <svg viewBox="0 0 24 24">
               <rect x="3" y="4" width="18" height="18" rx="2"/>
@@ -117,7 +104,9 @@
 
     tbody.innerHTML = games.map((g) => {
       const dur = `${g.duration_minutes || 0}m ${String(g.duration_seconds || 0).padStart(2, '0')}s`;
-      const mvp = g.mvp ? `<span class="badge badge-blue">${g.mvp}</span>` : `<span class="badge badge-neutral">-</span>`;
+      const mvp = g.mvp
+        ? `<span class="badge badge-blue">${g.mvp}</span>`
+        : `<span class="badge badge-neutral">—</span>`;
 
       return `
         <tr>
@@ -126,10 +115,9 @@
           <td>${dur}</td>
           <td>${scoreBadgeHtml(g.team_kills, g.team_deaths)}</td>
           <td>${mvp}</td>
-          <td>
-            <button class="btn btn-sm btn-danger" data-id="${g.id}" data-num="${g.game_number}">
-              Hapus
-            </button>
+          <td class="actions-cell">
+            <a href="editgame.html?id=${g.id}" class="btn btn-sm btn-secondary">Edit</a>
+            <button class="btn btn-sm btn-danger" data-id="${g.id}" data-num="${g.game_number}">Hapus</button>
           </td>
         </tr>`;
     }).join('');
@@ -139,7 +127,6 @@
     });
   }
 
-  // ── Delete ──────────────────────────────────
   function handleDelete(id, num) {
     if (!confirm(`Hapus Game ${num}? Tindakan ini tidak bisa dibatalkan.`)) return;
     fetch(`${apiBase()}game_api.php`, {
@@ -156,7 +143,6 @@
       .catch((err) => showToast(err.message || 'Gagal menghapus game.', 'error'));
   }
 
-  // ── Fetch match info ──────────────────────────
   function loadMatchInfo() {
     return fetch(`${apiBase()}match_api.php?action=get&id=${matchId}`)
       .then(async (res) => {
@@ -171,7 +157,6 @@
       .catch((err) => showToast(err.message || 'Gagal memuat info match.', 'error'));
   }
 
-  // ── Fetch games ──────────────────────────────
   function loadGames() {
     fetch(`${apiBase()}game_api.php?action=list&match_id=${matchId}`)
       .then(async (res) => {
@@ -183,7 +168,6 @@
       .catch((err) => showToast(err.message || 'Gagal memuat game.', 'error'));
   }
 
-  // ── Init ─────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
     matchId = getMatchIdFromUrl();
     if (matchId <= 0) {

@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tambah Game — Esport Team</title>
+  <title>Edit Game — Esport Team</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css">
   <script src="js/global.js" defer></script>
-  <script src="js/addgame.js" defer></script>
+  <script src="js/editgame.js" defer></script>
 </head>
 <body>
 <div class="app-layout">
@@ -93,7 +93,7 @@
         <span class="sep">/</span>
         <a id="breadcrumbGame" href="game.html">Game</a>
         <span class="sep">/</span>
-        <span class="current">Tambah Game</span>
+        <span class="current" id="breadcrumbCurrent">Edit Game</span>
       </div>
       <div class="topbar-actions"></div>
     </header>
@@ -101,8 +101,8 @@
     <main class="page-content">
       <div class="page-header">
         <div>
-          <h1 class="page-title">Tambah Game</h1>
-          <p class="page-sub" id="pageSub">Catat game baru tim</p>
+          <h1 class="page-title" id="pageTitle">Edit Game</h1>
+          <p class="page-sub" id="pageSub">Perbarui data game</p>
         </div>
         <a href="game.html" class="btn btn-secondary" id="backBtn">
           <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -165,7 +165,6 @@
           <span class="badge badge-blue" id="roleProgress">0 / 5 role</span>
         </div>
 
-        <!-- Role Selector -->
         <div class="form-group">
           <label class="form-label">Pilih Role</label>
           <div class="radio-group" id="roleTabGroup">
@@ -192,109 +191,67 @@
           </div>
         </div>
 
-        <!-- Role Card Container (hanya tampil 1 sekaligus) -->
         <div id="playerContainer">
-
           <article class="role-card" id="card-jungler">
-            <div class="role-head">
-              <span class="role-name">Jungler</span>
-              <span class="tag">Role 1</span>
-            </div>
-            <select class="form-select select-player" required>
-              <option value="" disabled selected>Pilih Pemain</option>
-            </select>
-            <select class="form-select select-hero field-spacer-sm" required>
-              <option value="" disabled selected>Pilih Hero</option>
-            </select>
+            <div class="role-head"><span class="role-name">Jungler</span><span class="tag">Role 1</span></div>
+            <select class="form-select select-player" required><option value="" disabled selected>Pilih Pemain</option></select>
+            <select class="form-select select-hero field-spacer-sm" required><option value="" disabled selected>Pilih Hero</option></select>
             <div class="grid-3 field-spacer-md">
-              <input class="form-input input-kills"   type="number" placeholder="Kill"   min="0" required />
-              <input class="form-input input-deaths"  type="number" placeholder="Death"  min="0" required />
+              <input class="form-input input-kills" type="number" placeholder="Kill" min="0" required />
+              <input class="form-input input-deaths" type="number" placeholder="Death" min="0" required />
               <input class="form-input input-assists" type="number" placeholder="Assist" min="0" required />
             </div>
             <input class="form-input input-gold field-spacer-md" type="number" placeholder="Total Gold" min="0" required />
           </article>
-
           <article class="role-card hidden" id="card-roamer">
-            <div class="role-head">
-              <span class="role-name">Roamer</span>
-              <span class="tag">Role 2</span>
-            </div>
-            <select class="form-select select-player" required>
-              <option value="" disabled selected>Pilih Pemain</option>
-            </select>
-            <select class="form-select select-hero field-spacer-sm" required>
-              <option value="" disabled selected>Pilih Hero</option>
-            </select>
+            <div class="role-head"><span class="role-name">Roamer</span><span class="tag">Role 2</span></div>
+            <select class="form-select select-player" required><option value="" disabled selected>Pilih Pemain</option></select>
+            <select class="form-select select-hero field-spacer-sm" required><option value="" disabled selected>Pilih Hero</option></select>
             <div class="grid-3 field-spacer-md">
-              <input class="form-input input-kills"   type="number" placeholder="Kill"   min="0" required />
-              <input class="form-input input-deaths"  type="number" placeholder="Death"  min="0" required />
+              <input class="form-input input-kills" type="number" placeholder="Kill" min="0" required />
+              <input class="form-input input-deaths" type="number" placeholder="Death" min="0" required />
               <input class="form-input input-assists" type="number" placeholder="Assist" min="0" required />
             </div>
             <input class="form-input input-gold field-spacer-md" type="number" placeholder="Total Gold" min="0" required />
           </article>
-
           <article class="role-card hidden" id="card-midlaner">
-            <div class="role-head">
-              <span class="role-name">Mid Laner</span>
-              <span class="tag">Role 3</span>
-            </div>
-            <select class="form-select select-player" required>
-              <option value="" disabled selected>Pilih Pemain</option>
-            </select>
-            <select class="form-select select-hero field-spacer-sm" required>
-              <option value="" disabled selected>Pilih Hero</option>
-            </select>
+            <div class="role-head"><span class="role-name">Mid Laner</span><span class="tag">Role 3</span></div>
+            <select class="form-select select-player" required><option value="" disabled selected>Pilih Pemain</option></select>
+            <select class="form-select select-hero field-spacer-sm" required><option value="" disabled selected>Pilih Hero</option></select>
             <div class="grid-3 field-spacer-md">
-              <input class="form-input input-kills"   type="number" placeholder="Kill"   min="0" required />
-              <input class="form-input input-deaths"  type="number" placeholder="Death"  min="0" required />
+              <input class="form-input input-kills" type="number" placeholder="Kill" min="0" required />
+              <input class="form-input input-deaths" type="number" placeholder="Death" min="0" required />
               <input class="form-input input-assists" type="number" placeholder="Assist" min="0" required />
             </div>
             <input class="form-input input-gold field-spacer-md" type="number" placeholder="Total Gold" min="0" required />
           </article>
-
           <article class="role-card hidden" id="card-explaner">
-            <div class="role-head">
-              <span class="role-name">Exp Laner</span>
-              <span class="tag">Role 4</span>
-            </div>
-            <select class="form-select select-player" required>
-              <option value="" disabled selected>Pilih Pemain</option>
-            </select>
-            <select class="form-select select-hero field-spacer-sm" required>
-              <option value="" disabled selected>Pilih Hero</option>
-            </select>
+            <div class="role-head"><span class="role-name">Exp Laner</span><span class="tag">Role 4</span></div>
+            <select class="form-select select-player" required><option value="" disabled selected>Pilih Pemain</option></select>
+            <select class="form-select select-hero field-spacer-sm" required><option value="" disabled selected>Pilih Hero</option></select>
             <div class="grid-3 field-spacer-md">
-              <input class="form-input input-kills"   type="number" placeholder="Kill"   min="0" required />
-              <input class="form-input input-deaths"  type="number" placeholder="Death"  min="0" required />
+              <input class="form-input input-kills" type="number" placeholder="Kill" min="0" required />
+              <input class="form-input input-deaths" type="number" placeholder="Death" min="0" required />
               <input class="form-input input-assists" type="number" placeholder="Assist" min="0" required />
             </div>
             <input class="form-input input-gold field-spacer-md" type="number" placeholder="Total Gold" min="0" required />
           </article>
-
           <article class="role-card hidden" id="card-goldlaner">
-            <div class="role-head">
-              <span class="role-name">Gold Laner</span>
-              <span class="tag">Role 5</span>
-            </div>
-            <select class="form-select select-player" required>
-              <option value="" disabled selected>Pilih Pemain</option>
-            </select>
-            <select class="form-select select-hero field-spacer-sm" required>
-              <option value="" disabled selected>Pilih Hero</option>
-            </select>
+            <div class="role-head"><span class="role-name">Gold Laner</span><span class="tag">Role 5</span></div>
+            <select class="form-select select-player" required><option value="" disabled selected>Pilih Pemain</option></select>
+            <select class="form-select select-hero field-spacer-sm" required><option value="" disabled selected>Pilih Hero</option></select>
             <div class="grid-3 field-spacer-md">
-              <input class="form-input input-kills"   type="number" placeholder="Kill"   min="0" required />
-              <input class="form-input input-deaths"  type="number" placeholder="Death"  min="0" required />
+              <input class="form-input input-kills" type="number" placeholder="Kill" min="0" required />
+              <input class="form-input input-deaths" type="number" placeholder="Death" min="0" required />
               <input class="form-input input-assists" type="number" placeholder="Assist" min="0" required />
             </div>
             <input class="form-input input-gold field-spacer-md" type="number" placeholder="Total Gold" min="0" required />
           </article>
-
         </div>
 
         <div class="step-actions">
           <button class="btn btn-secondary" id="btnBackStep" type="button">Kembali ke Tahap 1</button>
-          <button class="btn btn-primary"   id="btnSubmitAll" type="button">Simpan Game</button>
+          <button class="btn btn-primary"   id="btnSubmitAll" type="button">Simpan Perubahan</button>
         </div>
       </section>
 
