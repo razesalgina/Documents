@@ -14,6 +14,31 @@
     }
   }
 
+  function handleDeleteCompetition(id, name) {
+    if (!confirm(`Hapus kompetisi "${name}"? Tindakan ini tidak bisa dibatalkan.`)) return;
+
+    const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
+    fetch(`${apiBase}competition_api.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', id }),
+    })
+      .then(async (res) => {
+        const json = await res.json().catch(() => null);
+        if (!json || !json.ok) throw new Error((json && json.message) || 'Gagal menghapus.');
+        if (window.Esport && typeof window.Esport.showToast === 'function') {
+          window.Esport.showToast(`Kompetisi "${name}" berhasil dihapus.`, 'success');
+        }
+        // Refresh tabel tanpa reload halaman
+        initCompetitionPage();
+      })
+      .catch((error) => {
+        if (window.Esport && typeof window.Esport.showToast === 'function') {
+          window.Esport.showToast(error.message, 'error');
+        }
+      });
+  }
+
   function createCompetitionRow(competition, index) {
     const row = document.createElement('tr');
 
@@ -21,7 +46,11 @@
     indexCell.textContent = String(index + 1);
 
     const nameCell = document.createElement('td');
-    nameCell.textContent = competition.name || '-';
+    const nameLink = document.createElement('a');
+    nameLink.href = `editcompetition.html?id=${competition.id}`;
+    nameLink.textContent = competition.name || '-';
+    nameLink.className = 'link-primary'; // sesuaikan class CSS kamu
+    nameCell.appendChild(nameLink);
 
     const teamCountCell = document.createElement('td');
     teamCountCell.textContent = String(competition.team_count || 0);
@@ -35,14 +64,30 @@
     rankCell.textContent = competition.final_rank || '-';
 
     const statusCell = document.createElement('td');
-    statusCell.textContent = competition.status || '-';
+    const badge = document.createElement('span');
+    const statusMap = {
+      upcoming: 'badge badge-info',
+      ongoing:  'badge badge-success',
+      finished: 'badge badge-secondary',
+    };
+    badge.className = statusMap[(competition.status || '').toLowerCase()] || 'badge';
+    badge.textContent = competition.status || '-';
+    statusCell.appendChild(badge);
 
     const actionsCell = document.createElement('td');
+
     const editBtn = document.createElement('a');
     editBtn.href = `editcompetition.html?id=${competition.id}`;
     editBtn.className = 'btn btn-sm btn-secondary';
     editBtn.textContent = 'Edit';
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'btn btn-sm btn-danger';
+    deleteBtn.textContent = 'Hapus';
+    deleteBtn.addEventListener('click', () => handleDeleteCompetition(competition.id, competition.name));
+
     actionsCell.appendChild(editBtn);
+    actionsCell.appendChild(deleteBtn);
 
     row.appendChild(indexCell);
     row.appendChild(nameCell);
