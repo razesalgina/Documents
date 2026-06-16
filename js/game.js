@@ -97,14 +97,12 @@
     const existingRow = document.getElementById(`detail-row-${gameId}`);
 
     if (existingRow) {
-      // Tutup — hapus baris detail
       existingRow.remove();
       btn.textContent = 'Detail';
       btn.classList.remove('is-open');
       return;
     }
 
-    // Buka — fetch jika belum cache
     btn.textContent = '...';
     btn.disabled = true;
 
@@ -117,7 +115,6 @@
 
       const players = detailCache[gameId];
 
-      // Sisipkan <tr class="detail-row"> setelah baris game ini
       const gameRow   = btn.closest('tr');
       const detailRow = document.createElement('tr');
       detailRow.className = 'detail-row';
@@ -155,10 +152,17 @@
     const addGameBtn = document.getElementById('addGameBtn');
     if (addGameBtn) addGameBtn.href = `addgame.html?match_id=${matchId}`;
 
+    // FIX: back btn dinamis berdasarkan type match
     const backBtn = document.getElementById('backBtn');
     if (backBtn) {
       const type = (match.type || '').toLowerCase();
-      backBtn.href = (type === 'scrim' || type === 'ranked') ? 'train.html' : 'match.html';
+      if (type === 'scrim' || type === 'ranked') {
+        backBtn.href = 'train.html';
+      } else {
+        // tournament / league → kembali ke match.html dengan filter kompetisi jika ada
+        const compId = match.competition_id ? `?competition_id=${match.competition_id}` : '';
+        backBtn.href = `match.html${compId}`;
+      }
     }
   }
 
@@ -167,7 +171,6 @@
     const tbody    = document.getElementById('gameBody');
     const countEl  = document.getElementById('gameCount');
     const maxGames = matchData ? maxGamesFromFormat(matchData.format) : Infinity;
-    // colspan sesuai jumlah kolom thead: Game, Result, Waktu, Score, MVP, Detail, Aksi = 7
     const COL_SPAN = 7;
 
     if (countEl) {
@@ -234,7 +237,6 @@
         </tr>`;
     }).join('');
 
-    // Event delegation — satu listener untuk detail + hapus
     tbody.addEventListener('click', (e) => {
       const detailBtn = e.target.closest('.btn-detail');
       if (detailBtn) {
@@ -264,33 +266,38 @@
         const json = await res.json().catch(() => null);
         if (!json || !json.ok) throw new Error((json && json.message) || 'Gagal menghapus.');
         showToast(`Game ${num} berhasil dihapus.`, 'success');
-        // Clear cache game yang dihapus
         delete detailCache[id];
         loadGames();
       })
       .catch((err) => showToast(err.message || 'Gagal menghapus game.', 'error'));
   }
 
-  // ── Load ─────────────────────────────────────
+  // ── Load match info ──────────────────────────
+  // FIX: tidak throw jika gagal — loadGames tetap jalan
   function loadMatchInfo() {
     return fetch(`${apiBase()}match_api.php?action=get&id=${matchId}`)
       .then(async (res) => {
         const json = await res.json().catch(() => null);
-        if (!json || !json.ok) throw new Error('Match tidak ditemukan');
+        if (!json || !json.ok) return null;
         return json.match;
       })
       .then((match) => {
-        matchData = match;
-        updateMatchMeta(match);
+        if (match) {
+          matchData = match;
+          updateMatchMeta(match);
+        }
+        // Jika match null (tidak ditemukan), lanjut saja — loadGames akan tampil empty state
       })
-      .catch((err) => showToast(err.message || 'Gagal memuat info match.', 'error'));
+      .catch(() => {
+        // Koneksi gagal — tetap lanjutkan loadGames, jangan hentikan alur
+      });
   }
 
   function loadGames() {
     fetch(`${apiBase()}game_api.php?action=list&match_id=${matchId}`)
       .then(async (res) => {
         const json = await res.json().catch(() => null);
-        if (!json || !json.ok) throw new Error('Gagal mengambil data game');
+        if (!json || !json.ok) throw new Error(json?.message || 'Gagal mengambil data game');
         return json.games || [];
       })
       .then(renderGames)
@@ -299,10 +306,15 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     matchId = getMatchIdFromUrl();
+
+    // FIX: direct URL tanpa match_id — tidak tampilkan toast error,
+    // cukup redirect ke match.html secara diam-diam
     if (matchId <= 0) {
-      showToast('match_id tidak ditemukan di URL.', 'error');
+      window.location.replace('match.html');
       return;
     }
+
+    // loadMatchInfo tidak lagi mem-block loadGames meski gagal
     loadMatchInfo().then(() => loadGames());
   });
 

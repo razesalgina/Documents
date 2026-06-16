@@ -6,9 +6,19 @@ require __DIR__ . '/db.php';
 
 try {
     // ─── KPI ──────────────────────────────────────
-    $kompetisi = (int)$pdo->query('SELECT COUNT(*) FROM competitions')->fetchColumn();
+    $kompetisi  = (int)$pdo->query('SELECT COUNT(*) FROM competitions')->fetchColumn();
     $matchTotal = (int)$pdo->query('SELECT COUNT(*) FROM matches')->fetchColumn();
-    $players    = (int)$pdo->query('SELECT COUNT(*) FROM players WHERE is_active=1')->fetchColumn();
+
+    // FIX: Pemain Aktif — gabungkan players terdaftar + player unik di game_players
+    // Ini memastikan KPI selalu mencerminkan siapa yang benar-benar bermain,
+    // meskipun tabel players belum diisi manual.
+    $players = (int)$pdo->query(
+        "SELECT COUNT(DISTINCT name) FROM (
+            SELECT name FROM players WHERE is_active = 1
+            UNION
+            SELECT DISTINCT player_name AS name FROM game_players
+         ) AS active_players"
+    )->fetchColumn();
 
     // Winrate dari games
     $wr = $pdo->query(
@@ -39,24 +49,6 @@ try {
     unset($rm);
 
     // ─── Team Analysis: avg KDA per pemain ────────────
-    $teamStats = $pdo->query(
-        'SELECT gp.player_name,
-                p.primary_role,
-                COUNT(*) AS games,
-                SUM(gp.kills)   AS total_kills,
-                SUM(gp.deaths)  AS total_deaths,
-                SUM(gp.assists) AS total_assists,
-                ROUND(AVG(gp.kda), 2) AS avg_kda,
-                ROUND(SUM(gp.game_id IN (
-                    SELECT id FROM games WHERE result = :win
-                )) / COUNT(*) * 100, 1) AS win_pct
-         FROM game_players gp
-         LEFT JOIN players p ON p.name = gp.player_name
-         GROUP BY gp.player_name
-         ORDER BY avg_kda DESC'
-    )->fetchAll();
-
-    // re-do with parameter
     $stmtTeam = $pdo->prepare(
         "SELECT gp.player_name,
                 p.primary_role,

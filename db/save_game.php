@@ -37,7 +37,7 @@ if ($matchId <= 0) {
 try {
     $pdo->beginTransaction();
 
-    // ── Auto game_number: hitung games yang sudah ada untuk match ini ──
+    // ── Auto game_number ──
     $countStmt = $pdo->prepare('SELECT COUNT(*) FROM games WHERE match_id = :match_id');
     $countStmt->execute([':match_id' => $matchId]);
     $gameNumber = (int)$countStmt->fetchColumn() + 1;
@@ -101,11 +101,27 @@ try {
         ]);
     }
 
+    // ── FIX: Sync tabel players dari game_players ──
+    // Setiap player_name yang tampil di game_players wajib ada di tabel players.
+    // Jika belum ada, insert dengan is_active=1.
+    // Jika sudah ada tapi is_active=0, update menjadi aktif.
+    $syncStmt = $pdo->prepare(
+        'INSERT INTO players (name, is_active)
+         VALUES (:name, 1)
+         ON DUPLICATE KEY UPDATE is_active = 1'
+    );
+    foreach ($playerStats as $player) {
+        $name = trim($player['playerName'] ?? '');
+        if ($name !== '') {
+            $syncStmt->execute([':name' => $name]);
+        }
+    }
+
     $pdo->commit();
     echo json_encode(['ok' => true, 'gameId' => $gameId, 'gameNumber' => $gameNumber]);
 
 } catch (Throwable $e) {
     if ($pdo->inTransaction()) $pdo->rollBack();
     http_response_code(500);
-    echo json_encode(['ok' => false, 'message' => 'Gagal menyimpan game']);
+    echo json_encode(['ok' => false, 'message' => 'Gagal menyimpan game: ' . $e->getMessage()]);
 }
