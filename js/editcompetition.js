@@ -251,9 +251,6 @@
   function buildCompetitionPayload(formElement) {
     const formData = new FormData(formElement);
 
-    const idRaw = formData.get('id') || '';
-    const id = parseInt(idRaw, 10) || 0;
-
     const typeRaw = formData.get('type') || '';
     const type = typeRaw.toLowerCase();
     const name = (formData.get('competitionName') || '').toString().trim();
@@ -280,8 +277,43 @@
     const phaseBracket3 = phaseCount >= 3 ? formData.get('phaseBracket3') || null : null;
     const phaseBracket4 = phaseCount >= 4 ? formData.get('phaseBracket4') || null : null;
 
+    // Field baru per fase: start_date, team_count, group_count, group_team_count
+    function getPhaseDate(index) {
+      const value = formData.get(`phase${index}StartDate`);
+      return value && value.trim() !== '' ? value : null;
+    }
+
+    function getPhaseInt(name) {
+      const raw = formData.get(name);
+      if (raw === null || raw === '') return null;
+      const n = parseInt(raw, 10);
+      return Number.isNaN(n) ? null : n;
+    }
+
+    const phase_start_date1 = getPhaseDate(1);
+    const phase_start_date2 = phaseCount >= 2 ? getPhaseDate(2) : null;
+    const phase_start_date3 = phaseCount >= 3 ? getPhaseDate(3) : null;
+    const phase_start_date4 = phaseCount >= 4 ? getPhaseDate(4) : null;
+
+    const phase_team_count1 = getPhaseInt('phase1TeamCount');
+    const phase_team_count2 = phaseCount >= 2 ? getPhaseInt('phase2TeamCount') : null;
+    const phase_team_count3 = phaseCount >= 3 ? getPhaseInt('phase3TeamCount') : null;
+    const phase_team_count4 = phaseCount >= 4 ? getPhaseInt('phase4TeamCount') : null;
+
+    const phase_group_count1 = getPhaseInt('phase1GroupCount');
+    const phase_group_count2 = phaseCount >= 2 ? getPhaseInt('phase2GroupCount') : null;
+    const phase_group_count3 = phaseCount >= 3 ? getPhaseInt('phase3GroupCount') : null;
+    const phase_group_count4 = phaseCount >= 4 ? getPhaseInt('phase4GroupCount') : null;
+
+    const phase_group_team_count1 = getPhaseInt('phase1GroupTeamCount');
+    const phase_group_team_count2 =
+      phaseCount >= 2 ? getPhaseInt('phase2GroupTeamCount') : null;
+    const phase_group_team_count3 =
+      phaseCount >= 3 ? getPhaseInt('phase3GroupTeamCount') : null;
+    const phase_group_team_count4 =
+      phaseCount >= 4 ? getPhaseInt('phase4GroupTeamCount') : null;
+
     return {
-      id,
       type,
       name,
       registration_fee: Number(registrationFee) || 0,
@@ -290,18 +322,39 @@
       status: status || null,
       team_count: Number(teamCount) || 0,
       phase_count: phaseCount,
+
       phase_format1: phaseFormat1,
       phase_format2: phaseFormat2,
       phase_format3: phaseFormat3,
       phase_format4: phaseFormat4,
+
       phase_status1: phaseStatus1 || null,
       phase_status2: phaseStatus2,
       phase_status3: phaseStatus3,
       phase_status4: phaseStatus4,
+
       phase_bracket1: phaseBracket1 || null,
       phase_bracket2: phaseBracket2,
       phase_bracket3: phaseBracket3,
       phase_bracket4: phaseBracket4,
+
+      // field baru
+      phase_start_date1,
+      phase_start_date2,
+      phase_start_date3,
+      phase_start_date4,
+      phase_team_count1,
+      phase_team_count2,
+      phase_team_count3,
+      phase_team_count4,
+      phase_group_count1,
+      phase_group_count2,
+      phase_group_count3,
+      phase_group_count4,
+      phase_group_team_count1,
+      phase_group_team_count2,
+      phase_group_team_count3,
+      phase_group_team_count4,
     };
   }
 
@@ -439,7 +492,7 @@
       window.location.href = 'competition.html';
       return;
     }
-    
+
     renderPhaseBlocks();
     attachPhaseCountListener();
     attachAllFormatListeners();
