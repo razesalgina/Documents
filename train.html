@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="css/style.css"/>
 
   <script src="js/global.js" defer></script>
+  <script src="js/train.js" defer></script>
 </head>
 <body>
 <div class="app-layout">
@@ -79,11 +80,7 @@
     </div>
 
     <div class="sidebar-footer">
-      <button
-        class="theme-toggle"
-        id="themeToggle"
-        aria-label="Toggle theme"
-      >
+      <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
         <svg viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="5"/>
           <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
@@ -123,25 +120,32 @@
         </a>
       </div>
 
-      <section class="section">
+      <!-- SCRIM SECTION -->
+      <section class="section" id="scrimSection">
         <div class="card-header">
-          <h2 class="section-title">Riwayat Scrim</h2>
-          <span class="badge badge-blue">0 match</span>
+          <div>
+            <h2 class="section-title">Riwayat Scrim</h2>
+          </div>
+          <span class="badge badge-blue" id="scrimCount">0 match</span>
         </div>
-        <div class="table-wrap">
+
+        <!-- Toolbar scrim di-inject oleh train.js -->
+
+        <div class="table-wrap" id="scrimTableWrap">
           <table>
             <thead>
               <tr>
                 <th>#</th>
-                <th>Lawan</th>
-                <th>Tanggal</th>
+                <th>Nama Lawan</th>
+                <th>Score</th>
                 <th>Format</th>
+                <th>Status</th>
                 <th>Aksi</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="scrimBody">
               <tr>
-                <td colspan="5">
+                <td colspan="6">
                   <div class="empty-state">
                     <svg viewBox="0 0 24 24">
                       <circle cx="12" cy="12" r="10"/>
@@ -157,23 +161,29 @@
         </div>
       </section>
 
-      <section class="section">
+      <!-- RANKED SECTION -->
+      <section class="section" id="rankedSection">
         <div class="card-header">
-          <h2 class="section-title">Riwayat Ranked</h2>
-          <span class="badge badge-yellow">0 match</span>
+          <div>
+            <h2 class="section-title">Riwayat Ranked</h2>
+          </div>
+          <span class="badge badge-yellow" id="rankedCount">0 match</span>
         </div>
-        <div class="table-wrap">
+
+        <!-- Toolbar ranked di-inject oleh train.js -->
+
+        <div class="table-wrap" id="rankedTableWrap">
           <table>
             <thead>
               <tr>
                 <th>#</th>
-                <th>Lawan</th>
-                <th>Tanggal</th>
-                <th>Format</th>
+                <th>Sesi</th>
+                <th>Score</th>
+                <th>Status</th>
                 <th>Aksi</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="rankedBody">
               <tr>
                 <td colspan="5">
                   <div class="empty-state">
@@ -189,6 +199,7 @@
           </table>
         </div>
       </section>
+
     </main>
   </div>
 </div>

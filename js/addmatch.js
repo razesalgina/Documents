@@ -10,40 +10,72 @@
 
   function getElements() {
     return {
-      formElement:   document.getElementById('addMatchForm'),
-      eventGroup:    document.getElementById('eventGroup'),
-      opponentGroup: document.getElementById('opponentGroup'),
-      datetimeGroup: document.getElementById('datetimeGroup'),
-      formatGroup:   document.getElementById('formatGroup'),
-      dateGroup:     document.getElementById('dateGroup'),
-      timeGroup:     document.getElementById('timeGroup'),
+      formElement:      document.getElementById('addMatchForm'),
+      eventGroup:       document.getElementById('eventGroup'),
+      opponentGroup:    document.getElementById('opponentGroup'),
+      opponentInput:    document.getElementById('opponentNameInput'),
+      datetimeGroup:    document.getElementById('datetimeGroup'),
+      formatGroup:      document.getElementById('formatGroup'),
+      dateGroup:        document.getElementById('dateGroup'),
+      timeGroup:        document.getElementById('timeGroup'),
+      rankedAutoLabel:  document.getElementById('rankedAutoLabel'),
     };
   }
 
-  function updateFormVisibility(type) {
-    const { eventGroup, opponentGroup, datetimeGroup, formatGroup, dateGroup, timeGroup } = getElements();
-    if (!eventGroup) return;
+  // ── Auto-generate ranked name ───────────────────────
 
-    [eventGroup, opponentGroup, datetimeGroup, formatGroup, dateGroup, timeGroup].forEach((el) => {
+  function fetchNextRankedName() {
+    const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
+    return fetch(`${apiBase}match_api.php?action=list`)
+      .then(async (res) => {
+        const json = await res.json().catch(() => null);
+        if (!json || !json.ok) return 'Ranked1';
+        const rankeds = (json.matches || []).filter(
+          (m) => (m.type || '').toLowerCase() === 'ranked'
+        );
+        return `Ranked${rankeds.length + 1}`;
+      })
+      .catch(() => 'Ranked1');
+  }
+
+  // ── Form visibility ──────────────────────────────
+
+  function updateFormVisibility(type) {
+    const { eventGroup, opponentGroup, opponentInput, datetimeGroup,
+            formatGroup, dateGroup, timeGroup, rankedAutoLabel } = getElements();
+    if (!datetimeGroup) return;
+
+    [eventGroup, opponentGroup, datetimeGroup, formatGroup,
+     dateGroup, timeGroup, rankedAutoLabel].forEach((el) => {
       if (el) el.classList.add('hidden');
     });
 
     if (type === 'tournament' || type === 'league') {
-      eventGroup.classList.remove('hidden');
-      formatGroup.classList.remove('hidden');
-      opponentGroup.classList.remove('hidden');
-      datetimeGroup.classList.remove('hidden');
-      dateGroup.classList.remove('hidden');
-      timeGroup.classList.remove('hidden');
+      if (eventGroup)    eventGroup.classList.remove('hidden');
+      if (formatGroup)   formatGroup.classList.remove('hidden');
+      if (opponentGroup) opponentGroup.classList.remove('hidden');
+      if (datetimeGroup) datetimeGroup.classList.remove('hidden');
+      if (dateGroup)     dateGroup.classList.remove('hidden');
+      if (timeGroup)     timeGroup.classList.remove('hidden');
       loadUpcomingCompetitions();
+
     } else if (type === 'scrim') {
-      formatGroup.classList.remove('hidden');
-      opponentGroup.classList.remove('hidden');
-      datetimeGroup.classList.remove('hidden');
-      dateGroup.classList.remove('hidden');
+      if (formatGroup)   formatGroup.classList.remove('hidden');
+      if (opponentGroup) opponentGroup.classList.remove('hidden');
+      if (datetimeGroup) datetimeGroup.classList.remove('hidden');
+      if (dateGroup)     dateGroup.classList.remove('hidden');
+
     } else if (type === 'ranked') {
-      datetimeGroup.classList.remove('hidden');
-      dateGroup.classList.remove('hidden');
+      if (datetimeGroup)   datetimeGroup.classList.remove('hidden');
+      if (dateGroup)       dateGroup.classList.remove('hidden');
+      if (rankedAutoLabel) rankedAutoLabel.classList.remove('hidden');
+
+      // Fetch dan tampilkan nama ranked berikutnya
+      fetchNextRankedName().then((name) => {
+        if (rankedAutoLabel) rankedAutoLabel.textContent = `Sesi ini akan disimpan sebagai: ${name}`;
+        // Simpan di dataset agar mudah diambil saat submit
+        if (rankedAutoLabel) rankedAutoLabel.dataset.rankedName = name;
+      });
     }
   }
 
@@ -57,27 +89,41 @@
     });
   }
 
+  // ── Submit ───────────────────────────────────
+
   function handleSubmit(event) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
 
     const type          = (formData.get('type') || '').toLowerCase();
-    const opponentName  = formData.get('opponentName') || '';
     const matchDate     = formData.get('matchDate') || '';
     const matchTime     = formData.get('matchTime') || '';
-    const format        = formData.get('matchFormat') || null;  // select id="matchFormat", name="matchFormat"
+    const format        = formData.get('matchFormat') || null;
     const competitionId = formData.get('event') ? Number(formData.get('event')) : null;
 
     if (!type) { showToast('Kategori match wajib dipilih', 'error'); return; }
 
-    if ((type === 'tournament' || type === 'league') && (!format || !opponentName || !matchDate || !matchTime || !competitionId)) {
-      showToast('Format, lawan, tanggal, jam, dan nama kompetisi wajib diisi', 'error'); return;
-    }
-    if (type === 'scrim' && (!format || !opponentName || !matchDate)) {
-      showToast('Format, lawan, dan tanggal wajib diisi untuk Scrim', 'error'); return;
-    }
-    if (type === 'ranked' && !matchDate) {
-      showToast('Tanggal wajib diisi untuk Ranked', 'error'); return;
+    let opponentName;
+
+    if (type === 'ranked') {
+      // Ambil nama yang sudah di-generate
+      const rankedAutoLabel = document.getElementById('rankedAutoLabel');
+      opponentName = (rankedAutoLabel && rankedAutoLabel.dataset.rankedName)
+        ? rankedAutoLabel.dataset.rankedName
+        : null;
+
+      if (!matchDate) { showToast('Tanggal wajib diisi untuk Ranked', 'error'); return; }
+
+    } else {
+      opponentName = (formData.get('opponentName') || '').trim() || null;
+
+      if ((type === 'tournament' || type === 'league') &&
+          (!format || !opponentName || !matchDate || !matchTime || !competitionId)) {
+        showToast('Format, lawan, tanggal, jam, dan nama kompetisi wajib diisi', 'error'); return;
+      }
+      if (type === 'scrim' && (!format || !opponentName || !matchDate)) {
+        showToast('Format, lawan, dan tanggal wajib diisi untuk Scrim', 'error'); return;
+      }
     }
 
     const payload = {
@@ -85,7 +131,7 @@
       type,
       competition_id: competitionId,
       format:         format ? format.toUpperCase() : null,
-      opponent_name:  opponentName || null,
+      opponent_name:  opponentName,
       our_score:      0,
       opponent_score: 0,
       match_date:     matchDate || null,
@@ -105,10 +151,13 @@
       })
       .then(() => {
         showToast('Match berhasil disimpan!', 'success');
-        setTimeout(() => { window.location.href = 'match.html'; }, REDIRECT_DELAY_MS);
+        const redirect = type === 'scrim' || type === 'ranked' ? 'train.html' : 'match.html';
+        setTimeout(() => { window.location.href = redirect; }, REDIRECT_DELAY_MS);
       })
       .catch((err) => showToast(err.message || 'Terjadi kesalahan saat menyimpan match.', 'error'));
   }
+
+  // ── Load competitions ───────────────────────────
 
   function loadUpcomingCompetitions() {
     const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
