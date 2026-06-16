@@ -163,6 +163,17 @@ if ($method === 'POST') {
         $phaseGroupTeamCount3 = isset($data['phase_group_team_count3']) ? (int) $data['phase_group_team_count3'] : null;
         $phaseGroupTeamCount4 = isset($data['phase_group_team_count4']) ? (int) $data['phase_group_team_count4'] : null;
 
+        // FINAL RANK & RESULT per fase
+        $phaseFinalRank1 = $data['phase_final_rank1'] ?? null;
+        $phaseFinalRank2 = $data['phase_final_rank2'] ?? null;
+        $phaseFinalRank3 = $data['phase_final_rank3'] ?? null;
+        $phaseFinalRank4 = $data['phase_final_rank4'] ?? null;
+
+        $phaseResult1 = isset($data['phase_result1']) ? (int) $data['phase_result1'] : null;
+        $phaseResult2 = isset($data['phase_result2']) ? (int) $data['phase_result2'] : null;
+        $phaseResult3 = isset($data['phase_result3']) ? (int) $data['phase_result3'] : null;
+        $phaseResult4 = isset($data['phase_result4']) ? (int) $data['phase_result4'] : null;
+
         try {
             $stmt = $pdo->prepare('
                 INSERT INTO competitions (
@@ -201,7 +212,15 @@ if ($method === 'POST') {
                 phase_group_team_count1,
                 phase_group_team_count2,
                 phase_group_team_count3,
-                phase_group_team_count4
+                phase_group_team_count4,
+                phase_final_rank1,
+                phase_final_rank2,
+                phase_final_rank3,
+                phase_final_rank4,
+                phase_result1,
+                phase_result2,
+                phase_result3,
+                phase_result4
                 )
                 VALUES (
                 :type,
@@ -239,47 +258,63 @@ if ($method === 'POST') {
                 :phase_group_team_count1,
                 :phase_group_team_count2,
                 :phase_group_team_count3,
-                :phase_group_team_count4
+                :phase_group_team_count4,
+                :phase_final_rank1,
+                :phase_final_rank2,
+                :phase_final_rank3,
+                :phase_final_rank4,
+                :phase_result1,
+                :phase_result2,
+                :phase_result3,
+                :phase_result4
                 )
             ');
 
             $stmt->execute([
-                ':type'                  => $type,
-                ':name'                  => $name,
-                ':registration_fee'      => $registrationFee,
-                ':prizepool'             => $prizepool,
-                ':final_rank'            => $finalRank,
-                ':status'                => $status,
-                ':team_count'            => $teamCount,
-                ':phase_count'           => $phaseCount,
-                ':phase_format1'         => $phaseFormat1,
-                ':phase_format2'         => $phaseFormat2,
-                ':phase_format3'         => $phaseFormat3,
-                ':phase_format4'         => $phaseFormat4,
-                ':phase_status1'         => $phaseStatus1,
-                ':phase_status2'         => $phaseStatus2,
-                ':phase_status3'         => $phaseStatus3,
-                ':phase_status4'         => $phaseStatus4,
-                ':phase_bracket1'        => $phaseBracket1,
-                ':phase_bracket2'        => $phaseBracket2,
-                ':phase_bracket3'        => $phaseBracket3,
-                ':phase_bracket4'        => $phaseBracket4,
-                ':phase_start_date1'     => $phaseStartDate1,
-                ':phase_start_date2'     => $phaseStartDate2,
-                ':phase_start_date3'     => $phaseStartDate3,
-                ':phase_start_date4'     => $phaseStartDate4,
-                ':phase_team_count1'     => $phaseTeamCount1,
-                ':phase_team_count2'     => $phaseTeamCount2,
-                ':phase_team_count3'     => $phaseTeamCount3,
-                ':phase_team_count4'     => $phaseTeamCount4,
-                ':phase_group_count1'    => $phaseGroupCount1,
-                ':phase_group_count2'    => $phaseGroupCount2,
-                ':phase_group_count3'    => $phaseGroupCount3,
-                ':phase_group_count4'    => $phaseGroupCount4,
+                ':type'                   => $type,
+                ':name'                   => $name,
+                ':registration_fee'       => $registrationFee,
+                ':prizepool'              => $prizepool,
+                ':final_rank'             => $finalRank,
+                ':status'                 => $status,
+                ':team_count'             => $teamCount,
+                ':phase_count'            => $phaseCount,
+                ':phase_format1'          => $phaseFormat1,
+                ':phase_format2'          => $phaseFormat2,
+                ':phase_format3'          => $phaseFormat3,
+                ':phase_format4'          => $phaseFormat4,
+                ':phase_status1'          => $phaseStatus1,
+                ':phase_status2'          => $phaseStatus2,
+                ':phase_status3'          => $phaseStatus3,
+                ':phase_status4'          => $phaseStatus4,
+                ':phase_bracket1'         => $phaseBracket1,
+                ':phase_bracket2'         => $phaseBracket2,
+                ':phase_bracket3'         => $phaseBracket3,
+                ':phase_bracket4'         => $phaseBracket4,
+                ':phase_start_date1'      => $phaseStartDate1,
+                ':phase_start_date2'      => $phaseStartDate2,
+                ':phase_start_date3'      => $phaseStartDate3,
+                ':phase_start_date4'      => $phaseStartDate4,
+                ':phase_team_count1'      => $phaseTeamCount1,
+                ':phase_team_count2'      => $phaseTeamCount2,
+                ':phase_team_count3'      => $phaseTeamCount3,
+                ':phase_team_count4'      => $phaseTeamCount4,
+                ':phase_group_count1'     => $phaseGroupCount1,
+                ':phase_group_count2'     => $phaseGroupCount2,
+                ':phase_group_count3'     => $phaseGroupCount3,
+                ':phase_group_count4'     => $phaseGroupCount4,
                 ':phase_group_team_count1'=> $phaseGroupTeamCount1,
                 ':phase_group_team_count2'=> $phaseGroupTeamCount2,
                 ':phase_group_team_count3'=> $phaseGroupTeamCount3,
                 ':phase_group_team_count4'=> $phaseGroupTeamCount4,
+                ':phase_final_rank1'      => $phaseFinalRank1,
+                ':phase_final_rank2'      => $phaseFinalRank2,
+                ':phase_final_rank3'      => $phaseFinalRank3,
+                ':phase_final_rank4'      => $phaseFinalRank4,
+                ':phase_result1'          => $phaseResult1,
+                ':phase_result2'          => $phaseResult2,
+                ':phase_result3'          => $phaseResult3,
+                ':phase_result4'          => $phaseResult4,
             ]);
 
             $id = (int) $pdo->lastInsertId();
@@ -287,35 +322,35 @@ if ($method === 'POST') {
             echo json_encode([
                 'ok' => true,
                 'competition' => [
-                    'id'               => $id,
-                    'type'             => $type,
-                    'name'             => $name,
-                    'registration_fee' => $registrationFee,
-                    'prizepool'        => $prizepool,
-                    'final_rank'       => $finalRank,
-                    'status'           => $status,
-                    'team_count'       => $teamCount,
-                    'phase_count'      => $phaseCount,
-                    'phase_format1'    => $phaseFormat1,
-                    'phase_format2'    => $phaseFormat2,
-                    'phase_format3'    => $phaseFormat3,
-                    'phase_format4'    => $phaseFormat4,
-                    'phase_status1'    => $phaseStatus1,
-                    'phase_status2'    => $phaseStatus2,
-                    'phase_status3'    => $phaseStatus3,
-                    'phase_status4'    => $phaseStatus4,
-                    'phase_bracket1'   => $phaseBracket1,
-                    'phase_bracket2'   => $phaseBracket2,
-                    'phase_bracket3'   => $phaseBracket3,
-                    'phase_bracket4'   => $phaseBracket4,
-                    'phase_start_date1'=> $phaseStartDate1,
-                    'phase_start_date2'=> $phaseStartDate2,
-                    'phase_start_date3'=> $phaseStartDate3,
-                    'phase_start_date4'=> $phaseStartDate4,
-                    'phase_team_count1'=> $phaseTeamCount1,
-                    'phase_team_count2'=> $phaseTeamCount2,
-                    'phase_team_count3'=> $phaseTeamCount3,
-                    'phase_team_count4'=> $phaseTeamCount4,
+                    'id'                => $id,
+                    'type'              => $type,
+                    'name'              => $name,
+                    'registration_fee'  => $registrationFee,
+                    'prizepool'         => $prizepool,
+                    'final_rank'        => $finalRank,
+                    'status'            => $status,
+                    'team_count'        => $teamCount,
+                    'phase_count'       => $phaseCount,
+                    'phase_format1'     => $phaseFormat1,
+                    'phase_format2'     => $phaseFormat2,
+                    'phase_format3'     => $phaseFormat3,
+                    'phase_format4'     => $phaseFormat4,
+                    'phase_status1'     => $phaseStatus1,
+                    'phase_status2'     => $phaseStatus2,
+                    'phase_status3'     => $phaseStatus3,
+                    'phase_status4'     => $phaseStatus4,
+                    'phase_bracket1'    => $phaseBracket1,
+                    'phase_bracket2'    => $phaseBracket2,
+                    'phase_bracket3'    => $phaseBracket3,
+                    'phase_bracket4'    => $phaseBracket4,
+                    'phase_start_date1' => $phaseStartDate1,
+                    'phase_start_date2' => $phaseStartDate2,
+                    'phase_start_date3' => $phaseStartDate3,
+                    'phase_start_date4' => $phaseStartDate4,
+                    'phase_team_count1' => $phaseTeamCount1,
+                    'phase_team_count2' => $phaseTeamCount2,
+                    'phase_team_count3' => $phaseTeamCount3,
+                    'phase_team_count4' => $phaseTeamCount4,
                     'phase_group_count1'=> $phaseGroupCount1,
                     'phase_group_count2'=> $phaseGroupCount2,
                     'phase_group_count3'=> $phaseGroupCount3,
@@ -324,6 +359,14 @@ if ($method === 'POST') {
                     'phase_group_team_count2'=> $phaseGroupTeamCount2,
                     'phase_group_team_count3'=> $phaseGroupTeamCount3,
                     'phase_group_team_count4'=> $phaseGroupTeamCount4,
+                    'phase_final_rank1' => $phaseFinalRank1,
+                    'phase_final_rank2' => $phaseFinalRank2,
+                    'phase_final_rank3' => $phaseFinalRank3,
+                    'phase_final_rank4' => $phaseFinalRank4,
+                    'phase_result1'     => $phaseResult1,
+                    'phase_result2'     => $phaseResult2,
+                    'phase_result3'     => $phaseResult3,
+                    'phase_result4'     => $phaseResult4,
                 ],
             ]);
         } catch (Throwable $e) {
@@ -409,6 +452,17 @@ if ($method === 'POST') {
         $phaseGroupTeamCount3 = isset($data['phase_group_team_count3']) ? (int) $data['phase_group_team_count3'] : null;
         $phaseGroupTeamCount4 = isset($data['phase_group_team_count4']) ? (int) $data['phase_group_team_count4'] : null;
 
+        // FINAL RANK & RESULT per fase
+        $phaseFinalRank1 = $data['phase_final_rank1'] ?? null;
+        $phaseFinalRank2 = $data['phase_final_rank2'] ?? null;
+        $phaseFinalRank3 = $data['phase_final_rank3'] ?? null;
+        $phaseFinalRank4 = $data['phase_final_rank4'] ?? null;
+
+        $phaseResult1 = isset($data['phase_result1']) ? (int) $data['phase_result1'] : null;
+        $phaseResult2 = isset($data['phase_result2']) ? (int) $data['phase_result2'] : null;
+        $phaseResult3 = isset($data['phase_result3']) ? (int) $data['phase_result3'] : null;
+        $phaseResult4 = isset($data['phase_result4']) ? (int) $data['phase_result4'] : null;
+
         try {
             $stmt = $pdo->prepare('
                 UPDATE competitions SET
@@ -447,48 +501,64 @@ if ($method === 'POST') {
                 phase_group_team_count1 = :phase_group_team_count1,
                 phase_group_team_count2 = :phase_group_team_count2,
                 phase_group_team_count3 = :phase_group_team_count3,
-                phase_group_team_count4 = :phase_group_team_count4
+                phase_group_team_count4 = :phase_group_team_count4,
+                phase_final_rank1 = :phase_final_rank1,
+                phase_final_rank2 = :phase_final_rank2,
+                phase_final_rank3 = :phase_final_rank3,
+                phase_final_rank4 = :phase_final_rank4,
+                phase_result1 = :phase_result1,
+                phase_result2 = :phase_result2,
+                phase_result3 = :phase_result3,
+                phase_result4 = :phase_result4
                 WHERE id = :id
             ');
 
             $stmt->execute([
-                ':id'                 => $id,
-                ':type'               => $type,
-                ':name'               => $name,
-                ':registration_fee'   => $registrationFee,
-                ':prizepool'          => $prizepool,
-                ':final_rank'         => $finalRank,
-                ':status'             => $status,
-                ':team_count'         => $teamCount,
-                ':phase_count'        => $phaseCount,
-                ':phase_format1'      => $phaseFormat1,
-                ':phase_format2'      => $phaseFormat2,
-                ':phase_format3'      => $phaseFormat3,
-                ':phase_format4'      => $phaseFormat4,
-                ':phase_status1'      => $phaseStatus1,
-                ':phase_status2'      => $phaseStatus2,
-                ':phase_status3'      => $phaseStatus3,
-                ':phase_status4'      => $phaseStatus4,
-                ':phase_bracket1'     => $phaseBracket1,
-                ':phase_bracket2'     => $phaseBracket2,
-                ':phase_bracket3'     => $phaseBracket3,
-                ':phase_bracket4'     => $phaseBracket4,
-                ':phase_start_date1'  => $phaseStartDate1,
-                ':phase_start_date2'  => $phaseStartDate2,
-                ':phase_start_date3'  => $phaseStartDate3,
-                ':phase_start_date4'  => $phaseStartDate4,
-                ':phase_team_count1'  => $phaseTeamCount1,
-                ':phase_team_count2'  => $phaseTeamCount2,
-                ':phase_team_count3'  => $phaseTeamCount3,
-                ':phase_team_count4'  => $phaseTeamCount4,
-                ':phase_group_count1' => $phaseGroupCount1,
-                ':phase_group_count2' => $phaseGroupCount2,
-                ':phase_group_count3' => $phaseGroupCount3,
-                ':phase_group_count4' => $phaseGroupCount4,
+                ':id'                  => $id,
+                ':type'                => $type,
+                ':name'                => $name,
+                ':registration_fee'    => $registrationFee,
+                ':prizepool'           => $prizepool,
+                ':final_rank'          => $finalRank,
+                ':status'              => $status,
+                ':team_count'          => $teamCount,
+                ':phase_count'         => $phaseCount,
+                ':phase_format1'       => $phaseFormat1,
+                ':phase_format2'       => $phaseFormat2,
+                ':phase_format3'       => $phaseFormat3,
+                ':phase_format4'       => $phaseFormat4,
+                ':phase_status1'       => $phaseStatus1,
+                ':phase_status2'       => $phaseStatus2,
+                ':phase_status3'       => $phaseStatus3,
+                ':phase_status4'       => $phaseStatus4,
+                ':phase_bracket1'      => $phaseBracket1,
+                ':phase_bracket2'      => $phaseBracket2,
+                ':phase_bracket3'      => $phaseBracket3,
+                ':phase_bracket4'      => $phaseBracket4,
+                ':phase_start_date1'   => $phaseStartDate1,
+                ':phase_start_date2'   => $phaseStartDate2,
+                ':phase_start_date3'   => $phaseStartDate3,
+                ':phase_start_date4'   => $phaseStartDate4,
+                ':phase_team_count1'   => $phaseTeamCount1,
+                ':phase_team_count2'   => $phaseTeamCount2,
+                ':phase_team_count3'   => $phaseTeamCount3,
+                ':phase_team_count4'   => $phaseTeamCount4,
+                ':phase_group_count1'  => $phaseGroupCount1,
+                ':phase_group_count2'  => $phaseGroupCount2,
+                ':phase_group_count3'  => $phaseGroupCount3,
+                ':phase_group_count4'  => $phaseGroupCount4,
                 ':phase_group_team_count1'=> $phaseGroupTeamCount1,
                 ':phase_group_team_count2'=> $phaseGroupTeamCount2,
                 ':phase_group_team_count3'=> $phaseGroupTeamCount3,
                 ':phase_group_team_count4'=> $phaseGroupTeamCount4,
+                ':phase_final_rank1'   => $phaseFinalRank1,
+                ':phase_final_rank2'   => $phaseFinalRank2,
+                ':phase_final_rank3'   => $phaseFinalRank3,
+                ':phase_final_rank4'   => $phaseFinalRank4,
+                ':phase_result1'       => $phaseResult1,
+                ':phase_result2'       => $phaseResult2,
+                ':phase_result3'       => $phaseResult3,
+                ':phase_result4'       => $phaseResult4,
             ]);
 
             echo json_encode(['ok' => true]);

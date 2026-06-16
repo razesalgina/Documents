@@ -22,8 +22,7 @@ function createPhaseHtml(index) {
   return `
     <div class="form-group ${index > 1 ? 'hidden' : ''}" id="phase${index}Group">
       <label class="form-label">Fase ${index}</label>
-
-      <!-- Format Fase ${index} -->
+      
       <div class="form-group">
         <label class="form-label">Format Fase ${index}</label>
         <div class="radio-group">
@@ -46,10 +45,9 @@ function createPhaseHtml(index) {
         </div>
       </div>
 
-      <!-- Jumlah Tim per Fase & Tanggal Mulai -->
       <div class="form-grid-2">
         <div class="form-group">
-          <label class="form-label" for="phase${index}TeamCount">Jumlah Tim per Fase</label>
+          <label class="form-label" for="phase${index}TeamCount">Jumlah Tim</label>
           <input
             class="form-input"
             type="number"
@@ -69,8 +67,7 @@ function createPhaseHtml(index) {
           />
         </div>
       </div>
-
-      <!-- Hidden sub-form Fase ${index} (akan di-show/hide via JS) -->
+      
       <div class="form-grid-3">
         <div class="form-group hidden" id="phase${index}PositionGroup">
           <label class="form-label" for="phase${index}Position">Posisi Bracket</label>
@@ -118,8 +115,7 @@ function createPhaseHtml(index) {
           />
         </div>
       </div>
-
-      <!-- Status & Link bracket Fase ${index} -->
+      
       <div class="form-grid-2">
         <div class="form-group">
           <label class="form-label" for="phaseStatus${index}">Status Fase ${index}</label>
@@ -138,6 +134,33 @@ function createPhaseHtml(index) {
             id="phaseBracket${index}"
             name="phaseBracket${index}"
             placeholder="https://..."
+          />
+        </div>
+      </div>
+            
+      <div class="form-grid-2">
+        <div class="form-group">
+          <label class="form-label" for="finalRank${index}">Rank Akhir</label>
+          <select class="form-select" id="finalRank${index}" name="finalRank${index}">
+            <option value="">Uknown</option>
+            <option value="1st">1st</option>
+            <option value="2nd">2nd</option>
+            <option value="3rd">3rd</option>
+            <option value="4th">4th</option>
+            <option value="8th">8th</option>
+            <option value="16th">16th</option>
+            <option value="failed">Failed</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="result${index}">Hadiah</label>
+          <input
+            class="form-input"
+            type="number"
+            id="result${index}"
+            name="result${index}"
+            min="0"
+            placeholder="Contoh: 500000"
           />
         </div>
       </div>
@@ -268,6 +291,23 @@ function attachPhaseCountListener() {
     const phaseCountStr = formData.get('phaseCount') || '1';
     const phaseCount = parseInt(phaseCountStr, 10) || 1;
 
+    function getPhaseDate(index) {
+      const value = formData.get(`phase${index}StartDate`);
+      return value && value.trim() !== '' ? value : null;
+    }
+
+    function getPhaseInt(name) {
+      const raw = formData.get(name);
+      if (raw === null || raw === '') return null;
+      const n = parseInt(raw, 10);
+      return Number.isNaN(n) ? null : n;
+    }
+
+    function getPhaseStr(name) {
+      const raw = formData.get(name);
+      return raw && raw.trim() !== '' ? raw.trim() : null;
+    }
+
     const phaseFormat1 = getPhaseFormatValue(1) || null;
     const phaseFormat2 = phaseCount >= 2 ? getPhaseFormatValue(2) || null : null;
     const phaseFormat3 = phaseCount >= 3 ? getPhaseFormatValue(3) || null : null;
@@ -282,20 +322,7 @@ function attachPhaseCountListener() {
     const phaseBracket2 = phaseCount >= 2 ? formData.get('phaseBracket2') || null : null;
     const phaseBracket3 = phaseCount >= 3 ? formData.get('phaseBracket3') || null : null;
     const phaseBracket4 = phaseCount >= 4 ? formData.get('phaseBracket4') || null : null;
-
-    // Field baru per fase: start_date, team_count, group_count, group_team_count
-    function getPhaseDate(index) {
-      const value = formData.get(`phase${index}StartDate`);
-      return value && value.trim() !== '' ? value : null;
-    }
-
-    function getPhaseInt(name) {
-      const raw = formData.get(name);
-      if (raw === null || raw === '') return null;
-      const n = parseInt(raw, 10);
-      return Number.isNaN(n) ? null : n;
-    }
-
+    
     const phase_start_date1 = getPhaseDate(1);
     const phase_start_date2 = phaseCount >= 2 ? getPhaseDate(2) : null;
     const phase_start_date3 = phaseCount >= 3 ? getPhaseDate(3) : null;
@@ -319,8 +346,18 @@ function attachPhaseCountListener() {
     const phase_group_team_count4 =
       phaseCount >= 4 ? getPhaseInt('phase4GroupTeamCount') : null;
 
+    const phase_final_rank1 = getPhaseStr('finalRank1');
+    const phase_final_rank2 = phaseCount >= 2 ? getPhaseStr('finalRank2') : null;
+    const phase_final_rank3 = phaseCount >= 3 ? getPhaseStr('finalRank3') : null;
+    const phase_final_rank4 = phaseCount >= 4 ? getPhaseStr('finalRank4') : null;
+
+    const phase_result1 = getPhaseInt('result1');
+    const phase_result2 = phaseCount >= 2 ? getPhaseInt('result2') : null;
+    const phase_result3 = phaseCount >= 3 ? getPhaseInt('result3') : null;
+    const phase_result4 = phaseCount >= 4 ? getPhaseInt('result4') : null;
+
     return {
-      id,  // ← penting untuk update
+      id,
 
       type,
       name,
@@ -331,37 +368,50 @@ function attachPhaseCountListener() {
       team_count: Number(teamCount) || 0,
       phase_count: phaseCount,
 
-      phase_format1: phaseFormat1,
-      phase_format2: phaseFormat2,
-      phase_format3: phaseFormat3,
-      phase_format4: phaseFormat4,
+      phase_format1: phaseFormat1 || null,
+      phase_format2: phaseFormat2 || null,
+      phase_format3: phaseFormat3 || null,
+      phase_format4: phaseFormat4 || null,
 
       phase_status1: phaseStatus1 || null,
-      phase_status2: phaseStatus2,
-      phase_status3: phaseStatus3,
-      phase_status4: phaseStatus4,
+      phase_status2: phaseStatus2 || null,
+      phase_status3: phaseStatus3 || null,
+      phase_status4: phaseStatus4 || null,
 
       phase_bracket1: phaseBracket1 || null,
-      phase_bracket2: phaseBracket2,
-      phase_bracket3: phaseBracket3,
-      phase_bracket4: phaseBracket4,
+      phase_bracket2: phaseBracket2 || null,
+      phase_bracket3: phaseBracket3 || null,
+      phase_bracket4: phaseBracket4 || null,
 
-      phase_start_date1,
-      phase_start_date2,
-      phase_start_date3,
-      phase_start_date4,
-      phase_team_count1,
-      phase_team_count2,
-      phase_team_count3,
-      phase_team_count4,
-      phase_group_count1,
-      phase_group_count2,
-      phase_group_count3,
-      phase_group_count4,
-      phase_group_team_count1,
-      phase_group_team_count2,
-      phase_group_team_count3,
-      phase_group_team_count4,
+      phase_start_date1: phase_start_date1 || null,
+      phase_start_date2: phase_start_date2 || null,
+      phase_start_date3: phase_start_date3 || null,
+      phase_start_date4: phase_start_date4 || null,
+
+      phase_team_count1: phase_team_count1 || null,
+      phase_team_count2: phase_team_count2 || null,
+      phase_team_count3: phase_team_count3 || null,
+      phase_team_count4: phase_team_count4 || null,
+      
+      phase_group_count1: phase_group_count1 || null,
+      phase_group_count2: phase_group_count2 || null,
+      phase_group_count3: phase_group_count3 || null,
+      phase_group_count4: phase_group_count4 || null,
+      
+      phase_group_team_count1: phase_group_team_count1 || null,
+      phase_group_team_count2: phase_group_team_count2 || null,
+      phase_group_team_count3: phase_group_team_count3 || null,
+      phase_group_team_count4: phase_group_team_count4 || null,
+
+      phase_final_rank1: phase_final_rank1 || null,
+      phase_final_rank2: phase_final_rank2 || null,
+      phase_final_rank3: phase_final_rank3 || null,
+      phase_final_rank4: phase_final_rank4 || null,
+
+      phase_result1: phase_result1 || null,
+      phase_result2: phase_result2 || null,
+      phase_result3: phase_result3 || null,
+      phase_result4: phase_result4 || null,
     };
   }
 
