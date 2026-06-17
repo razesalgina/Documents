@@ -9,25 +9,35 @@
     { key: 'goldlaner', label: 'Gold Laner' },
   ];
 
-  // ── State ───────────────────────────────────
+  // Role mapping: key -> nilai primary_role di DB
+  // Sesuaikan jika enum di DB berbeda
+  const ROLE_DB_MAP = {
+    jungler:   'jungler',
+    roamer:    'roamer',
+    midlaner:  'midlaner',
+    explaner:  'explaner',
+    goldlaner: 'goldlaner',
+  };
+
   let matchId    = 0;
-  let gameNumber = 0; // akan di-set setelah fetch
+  let gameNumber = 0;
+
+  // Data master disimpan di sini setelah fetch
+  let allPlayers = []; // [{ id, name, primary_role }]
+  let allHeroes  = []; // ['Hero A', 'Hero B', ...]
 
   const apiBase = () => window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
 
-  // ── Toast ──────────────────────────────────
   function showToast(msg, type) {
     if (window.Esport && typeof window.Esport.showToast === 'function') {
       window.Esport.showToast(msg, type);
     }
   }
 
-  // ── URL helpers ─────────────────────────────
   function getParam(name) {
     return new URLSearchParams(window.location.search).get(name);
   }
 
-  // ── Update back-btn & breadcrumb ────────────────
   function updateNavLinks(mid) {
     const gameUrl = `game.html?match_id=${mid}`;
     const backBtn = document.getElementById('backBtn');
@@ -36,25 +46,192 @@
     if (breadcrumbGame) breadcrumbGame.href = gameUrl;
   }
 
-  // ── Populate dropdowns ────────────────────────
-  function populateDropdowns(players, heroes) {
-    const allPlayerSelects = document.querySelectorAll('.select-player');
-    const allHeroSelects   = document.querySelectorAll('.select-hero');
+  // ═══════════════════════════════════════════════════════
+  // PLAYER DROPDOWN — filter by role
+  // ═══════════════════════════════════════════════════════
 
-    const playerOpts = players
-      .map((p) => `<option value="${p.name}">${p.name} (${p.primary_role})</option>`)
-      .join('');
-    const heroOpts = heroes
-      .map((h) => `<option value="${h}">${h}</option>`)
+  /**
+   * Render ulang dropdown pemain pada sebuah card
+   * berdasarkan roleKey yang sedang aktif.
+   * Nilai yang sudah dipilih sebelumnya dipertahankan jika
+   * masih ada dalam daftar yang difilter.
+   */
+  function refreshPlayerDropdown(roleKey) {
+    const card = document.getElementById(`card-${roleKey}`);
+    if (!card) return;
+
+    const sel    = card.querySelector('.select-player');
+    if (!sel) return;
+
+    const prevVal = sel.value; // simpan pilihan lama
+    const dbRole  = ROLE_DB_MAP[roleKey] || roleKey;
+
+    // Filter: tampilkan semua jika tidak ada yang cocok,
+    // tapi prioritaskan yang sesuai role.
+    const filtered = allPlayers.filter(
+      (p) => (p.primary_role || '').toLowerCase() === dbRole.toLowerCase()
+    );
+    const pool = filtered.length > 0 ? filtered : allPlayers;
+
+    const opts = pool
+      .map((p) => {
+        const roleLabel = p.primary_role ? ` (${p.primary_role})` : '';
+        return `<option value="${p.name}">${p.name}${roleLabel}</option>`;
+      })
       .join('');
 
-    allPlayerSelects.forEach((sel) => {
-      sel.innerHTML = `<option value="" disabled selected>Pilih Pemain</option>${playerOpts}`;
+    sel.innerHTML = `<option value="" disabled>Pilih Pemain</option>${opts}`;
+
+    // Kembalikan pilihan lama jika masih tersedia
+    if (prevVal && pool.some((p) => p.name === prevVal)) {
+      sel.value = prevVal;
+    } else {
+      sel.value = '';
+    }
+  }
+
+  /** Refresh semua card sekaligus (dipanggil saat data selesai load) */
+  function refreshAllPlayerDropdowns() {
+    ROLES.forEach(({ key }) => refreshPlayerDropdown(key));
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // HERO PICKER — grid + search (pengganti <select>)
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * Buat elemen hero picker kustom untuk sebuah card.
+   * Menggantikan <select class="select-hero"> dengan UI:
+   *   [ input readonly (display) ] [ tombol pilih ]
+   *   [ dropdown panel: search + grid hero ]
+   *
+   * Data terikat ke hidden input .hero-value yang
+   * digunakan saat koleksi data form.
+   */
+  function buildHeroPicker(card, roleKey) {
+    const oldSel = card.querySelector('.select-hero');
+    if (!oldSel) return;
+
+    // Buat wrapper
+    const wrapper = document.createElement('div');
+    wrapper.className  = 'hero-picker-wrap';
+    wrapper.dataset.role = roleKey;
+
+    wrapper.innerHTML = `
+      <div class="hero-picker-trigger">
+        <span class="hero-picker-display">Pilih Hero</span>
+        <button type="button" class="hero-picker-btn" aria-haspopup="listbox" aria-expanded="false">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+        <input type="hidden" class="hero-value select-hero" name="heroName" value="">
+      </div>
+      <div class="hero-picker-panel" hidden>
+        <div class="hero-picker-search-wrap">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none"
+               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" class="hero-picker-search" placeholder="Cari hero..." autocomplete="off">
+        </div>
+        <div class="hero-picker-grid"></div>
+        <div class="hero-picker-empty" hidden>Hero tidak ditemukan</div>
+      </div>`;
+
+    oldSel.replaceWith(wrapper);
+    renderHeroGrid(wrapper, '');
+    attachHeroPickerEvents(wrapper);
+  }
+
+  /** Render grid item sesuai query pencarian */
+  function renderHeroGrid(wrapper, query) {
+    const grid  = wrapper.querySelector('.hero-picker-grid');
+    const empty = wrapper.querySelector('.hero-picker-empty');
+    const q     = (query || '').toLowerCase().trim();
+    const list  = q
+      ? allHeroes.filter((h) => h.toLowerCase().includes(q))
+      : allHeroes;
+
+    if (list.length === 0) {
+      grid.innerHTML = '';
+      empty.hidden = false;
+      return;
+    }
+    empty.hidden = true;
+
+    const currentVal = wrapper.querySelector('.hero-value').value;
+    grid.innerHTML = list
+      .map((h) => {
+        const active = h === currentVal ? ' is-active' : '';
+        return `<button type="button" class="hero-item${active}" data-hero="${h}">${h}</button>`;
+      })
+      .join('');
+  }
+
+  /** Pasang semua event listener ke sebuah picker instance */
+  function attachHeroPickerEvents(wrapper) {
+    const trigger  = wrapper.querySelector('.hero-picker-btn');
+    const panel    = wrapper.querySelector('.hero-picker-panel');
+    const search   = wrapper.querySelector('.hero-picker-search');
+    const display  = wrapper.querySelector('.hero-picker-display');
+    const hiddenIn = wrapper.querySelector('.hero-value');
+
+    // Buka / tutup panel
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isOpen = !panel.hidden;
+      closeAllHeroPanels();
+      if (!isOpen) {
+        panel.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+        wrapper.classList.add('is-open');
+        search.focus();
+        renderHeroGrid(wrapper, search.value);
+      }
     });
-    allHeroSelects.forEach((sel) => {
-      sel.innerHTML = `<option value="" disabled selected>Pilih Hero</option>${heroOpts}`;
+
+    // Juga bisa klik area display
+    display.addEventListener('click', () => trigger.click());
+
+    // Search
+    search.addEventListener('input', () => renderHeroGrid(wrapper, search.value));
+    search.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllHeroPanels();
+    });
+
+    // Pilih hero dari grid (event delegation)
+    panel.addEventListener('click', (e) => {
+      const btn = e.target.closest('.hero-item');
+      if (!btn) return;
+      const hero = btn.dataset.hero;
+      hiddenIn.value   = hero;
+      display.textContent = hero;
+      display.classList.toggle('has-value', !!hero);
+      closeAllHeroPanels();
+      // Trigger change untuk updateRoleProgress
+      hiddenIn.dispatchEvent(new Event('change', { bubbles: true }));
     });
   }
+
+  /** Tutup semua panel hero picker yang sedang terbuka */
+  function closeAllHeroPanels() {
+    document.querySelectorAll('.hero-picker-wrap.is-open').forEach((w) => {
+      w.querySelector('.hero-picker-panel').hidden = true;
+      w.querySelector('.hero-picker-btn').setAttribute('aria-expanded', 'false');
+      w.classList.remove('is-open');
+    });
+  }
+
+  // Tutup panel saat klik di luar
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.hero-picker-wrap')) closeAllHeroPanels();
+  });
+
+  // ═══════════════════════════════════════════════════════
+  // LOAD DROPDOWNS
+  // ═══════════════════════════════════════════════════════
 
   async function loadDropdowns() {
     try {
@@ -64,15 +241,26 @@
       ]);
       const pJson = await pRes.json().catch(() => null);
       const hJson = await hRes.json().catch(() => null);
-      const players = (pJson && pJson.ok) ? pJson.players : [];
-      const heroes  = (hJson && hJson.ok) ? hJson.heroes  : [];
-      populateDropdowns(players, heroes);
+      allPlayers = (pJson && pJson.ok) ? pJson.players : [];
+      allHeroes  = (hJson && hJson.ok) ? hJson.heroes  : [];
+
+      // Player dropdowns — setiap card diisi sesuai role-nya
+      refreshAllPlayerDropdowns();
+
+      // Hero pickers — bangun UI kustom untuk setiap card
+      ROLES.forEach(({ key }) => {
+        const card = document.getElementById(`card-${key}`);
+        if (card) buildHeroPicker(card, key);
+      });
     } catch (_) {
       showToast('Gagal memuat data pemain / hero.', 'error');
     }
   }
 
-  // ── Fetch auto game_number preview ──────────────
+  // ═══════════════════════════════════════════════════════
+  // GAME NUMBER PREVIEW
+  // ═══════════════════════════════════════════════════════
+
   async function loadGameNumber() {
     if (matchId <= 0) return;
     try {
@@ -85,24 +273,29 @@
     } catch (_) { /* silent */ }
   }
 
-  // ── Role tab switching (fase pattern) ────────────
+  // ═══════════════════════════════════════════════════════
+  // ROLE TABS
+  // ═══════════════════════════════════════════════════════
+
   function updateRoleProgress() {
     let filled = 0;
     ROLES.forEach(({ key }) => {
       const card = document.getElementById(`card-${key}`);
       if (!card) return;
-      const player = card.querySelector('.select-player');
-      const hero   = card.querySelector('.select-hero');
-      const kills  = card.querySelector('.input-kills');
-      const deaths = card.querySelector('.input-deaths');
+      const player  = card.querySelector('.select-player');
+      const heroVal = card.querySelector('.hero-value');
+      // Fallback ke .select-hero jika picker belum dibangun
+      const heroEl  = heroVal || card.querySelector('.select-hero');
+      const kills   = card.querySelector('.input-kills');
+      const deaths  = card.querySelector('.input-deaths');
       const assists = card.querySelector('.input-assists');
-      const gold   = card.querySelector('.input-gold');
-      if (player && player.value &&
-          hero   && hero.value &&
-          kills  && kills.value.trim() !== '' &&
-          deaths && deaths.value.trim() !== '' &&
+      const gold    = card.querySelector('.input-gold');
+      if (player  && player.value &&
+          heroEl  && heroEl.value &&
+          kills   && kills.value.trim()   !== '' &&
+          deaths  && deaths.value.trim()  !== '' &&
           assists && assists.value.trim() !== '' &&
-          gold   && gold.value.trim() !== '') {
+          gold    && gold.value.trim()    !== '') {
         filled++;
       }
     });
@@ -121,11 +314,14 @@
     const radios = document.querySelectorAll('input[name="activeRole"]');
     radios.forEach((radio) => {
       radio.addEventListener('change', () => {
-        switchRole(radio.value);
+        const roleKey = radio.value;
+        switchRole(roleKey);
+        // Re-filter player dropdown sesuai role yang baru aktif
+        refreshPlayerDropdown(roleKey);
         updateRoleProgress();
       });
     });
-    // Update progress on any input change
+
     const container = document.getElementById('playerContainer');
     if (container) {
       container.addEventListener('change', updateRoleProgress);
@@ -133,7 +329,10 @@
     }
   }
 
-  // ── Validation helpers ────────────────────────
+  // ═══════════════════════════════════════════════════════
+  // VALIDATION
+  // ═══════════════════════════════════════════════════════
+
   function markError(el) { if (el) el.classList.add('field-error'); }
   function clearErrors() {
     document.querySelectorAll('.field-error').forEach((el) => el.classList.remove('field-error'));
@@ -141,12 +340,12 @@
 
   function validateStep1() {
     clearErrors();
-    const kills   = document.getElementById('teamKills');
-    const deaths  = document.getElementById('teamDeaths');
-    const durMin  = document.getElementById('gameDurationMin');
-    const durSec  = document.getElementById('gameDurationSec');
+    const kills  = document.getElementById('teamKills');
+    const deaths = document.getElementById('teamDeaths');
+    const durMin = document.getElementById('gameDurationMin');
+    const durSec = document.getElementById('gameDurationSec');
 
-    if (!kills || kills.value.trim() === '')   { markError(kills);  return { valid: false, message: 'Total kills wajib diisi.' }; }
+    if (!kills  || kills.value.trim() === '')   { markError(kills);  return { valid: false, message: 'Total kills wajib diisi.' }; }
     if (!deaths || deaths.value.trim() === '')  { markError(deaths); return { valid: false, message: 'Total deaths wajib diisi.' }; }
     if (!durMin || durMin.value.trim() === '')  { markError(durMin); return { valid: false, message: 'Menit durasi wajib diisi.' }; }
     if (!durSec || durSec.value.trim() === '')  { markError(durSec); return { valid: false, message: 'Detik durasi wajib diisi.' }; }
@@ -163,46 +362,53 @@
       const card    = document.getElementById(`card-${key}`);
       if (!card) continue;
       const player  = card.querySelector('.select-player');
-      const hero    = card.querySelector('.select-hero');
+      // Prioritas: hero-value (picker), fallback ke select-hero biasa
+      const heroEl  = card.querySelector('.hero-value') || card.querySelector('.select-hero');
+      const heroWrap = card.querySelector('.hero-picker-trigger');
       const kills   = card.querySelector('.input-kills');
       const deaths  = card.querySelector('.input-deaths');
       const assists = card.querySelector('.input-assists');
       const gold    = card.querySelector('.input-gold');
 
-      if (!player || !player.value) {
-        // Switch ke role yang error
+      const switchToRole = () => {
         switchRole(key);
-        document.querySelector(`input[name="activeRole"][value="${key}"]`).checked = true;
-        markError(player);
+        const radio = document.querySelector(`input[name="activeRole"][value="${key}"]`);
+        if (radio) radio.checked = true;
+      };
+
+      if (!player || !player.value) {
+        switchToRole(); markError(player);
         return { valid: false, message: `Pilih pemain untuk ${label}.` };
       }
-      if (!hero || !hero.value) {
-        switchRole(key);
-        document.querySelector(`input[name="activeRole"][value="${key}"]`).checked = true;
-        markError(hero);
+      if (!heroEl || !heroEl.value) {
+        switchToRole();
+        if (heroWrap) heroWrap.classList.add('field-error');
         return { valid: false, message: `Pilih hero untuk ${label}.` };
       }
       if (!kills || kills.value.trim() === '') {
-        switchRole(key); document.querySelector(`input[name="activeRole"][value="${key}"]`).checked = true;
-        markError(kills); return { valid: false, message: `Kill untuk ${label} wajib diisi.` };
+        switchToRole(); markError(kills);
+        return { valid: false, message: `Kill untuk ${label} wajib diisi.` };
       }
       if (!deaths || deaths.value.trim() === '') {
-        switchRole(key); document.querySelector(`input[name="activeRole"][value="${key}"]`).checked = true;
-        markError(deaths); return { valid: false, message: `Death untuk ${label} wajib diisi.` };
+        switchToRole(); markError(deaths);
+        return { valid: false, message: `Death untuk ${label} wajib diisi.` };
       }
       if (!assists || assists.value.trim() === '') {
-        switchRole(key); document.querySelector(`input[name="activeRole"][value="${key}"]`).checked = true;
-        markError(assists); return { valid: false, message: `Assist untuk ${label} wajib diisi.` };
+        switchToRole(); markError(assists);
+        return { valid: false, message: `Assist untuk ${label} wajib diisi.` };
       }
       if (!gold || gold.value.trim() === '') {
-        switchRole(key); document.querySelector(`input[name="activeRole"][value="${key}"]`).checked = true;
-        markError(gold); return { valid: false, message: `Total Gold untuk ${label} wajib diisi.` };
+        switchToRole(); markError(gold);
+        return { valid: false, message: `Total Gold untuk ${label} wajib diisi.` };
       }
     }
     return { valid: true };
   }
 
-  // ── Collect data ─────────────────────────────
+  // ═══════════════════════════════════════════════════════
+  // COLLECT DATA
+  // ═══════════════════════════════════════════════════════
+
   function getGameInfo() {
     return {
       matchId,
@@ -215,12 +421,13 @@
   }
 
   function getPlayerStats() {
-    return ROLES.map(({ key, label }) => {
-      const card = document.getElementById(`card-${key}`);
+    return ROLES.map(({ key }) => {
+      const card    = document.getElementById(`card-${key}`);
+      const heroEl  = card?.querySelector('.hero-value') || card?.querySelector('.select-hero');
       return {
         roleName:   key,
         playerName: card?.querySelector('.select-player')?.value || '',
-        heroName:   card?.querySelector('.select-hero')?.value   || '',
+        heroName:   heroEl?.value || '',
         kills:      Number(card?.querySelector('.input-kills')?.value)   || 0,
         deaths:     Number(card?.querySelector('.input-deaths')?.value)  || 0,
         assists:    Number(card?.querySelector('.input-assists')?.value) || 0,
@@ -229,7 +436,10 @@
     });
   }
 
-  // ── Step navigation ───────────────────────────
+  // ═══════════════════════════════════════════════════════
+  // STEP NAVIGATION
+  // ═══════════════════════════════════════════════════════
+
   function goToStep2() {
     document.getElementById('tahap1')?.classList.add('hidden');
     document.getElementById('tahap2')?.classList.remove('hidden');
@@ -239,14 +449,16 @@
     document.getElementById('tahap2')?.classList.add('hidden');
     document.getElementById('tahap1')?.classList.remove('hidden');
   }
-
   function handleNextStep() {
     const v = validateStep1();
     if (!v.valid) { showToast(v.message, 'error'); return; }
     goToStep2();
   }
 
-  // ── Submit ──────────────────────────────────
+  // ═══════════════════════════════════════════════════════
+  // SUBMIT
+  // ═══════════════════════════════════════════════════════
+
   function handleSubmitAll() {
     const v = validateStep2();
     if (!v.valid) { showToast(v.message, 'error'); return; }
@@ -265,14 +477,15 @@
       })
       .then(() => {
         showToast('Game berhasil disimpan!', 'success');
-        setTimeout(() => {
-          window.location.href = `game.html?match_id=${matchId}`;
-        }, REDIRECT_DELAY_MS);
+        setTimeout(() => { window.location.href = `game.html?match_id=${matchId}`; }, REDIRECT_DELAY_MS);
       })
       .catch((err) => showToast(err.message || 'Terjadi kesalahan.', 'error'));
   }
 
-  // ── Init ────────────────────────────────────
+  // ═══════════════════════════════════════════════════════
+  // INIT
+  // ═══════════════════════════════════════════════════════
+
   document.addEventListener('DOMContentLoaded', () => {
     matchId = parseInt(getParam('match_id') || '0', 10);
     if (matchId <= 0) showToast('match_id tidak ditemukan di URL.', 'error');
