@@ -1428,6 +1428,183 @@ a, button, [role="button"], input, textarea, select {
 }
 
 /* ============================================================
+   HERO PICKER — custom searchable select
+   Menggunakan token style.css, tidak butuh file terpisah.
+   ============================================================ */
+
+/* Wrapper relatif agar dropdown bisa absolute */
+.hero-picker-wrap {
+  position: relative;
+  width: 100%;
+}
+
+/* Trigger: identik dengan .form-select dari style.css */
+.hero-picker-trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0.75rem var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  font-size: var(--text-sm);
+  min-height: 42px;
+  cursor: pointer;
+  user-select: none;
+  transition: border-color var(--transition-interactive),
+              box-shadow    var(--transition-interactive);
+}
+
+.hero-picker-trigger:hover,
+.hero-picker-wrap.is-open .hero-picker-trigger {
+  border-color: var(--color-primary);
+}
+
+.hero-picker-wrap.is-open .hero-picker-trigger {
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+/* Error state — identik dengan .field-error */
+.hero-picker-trigger.field-error {
+  border-color: #f97373;
+  box-shadow: 0 0 0 1px #f97373;
+}
+
+/* Display text — placeholder vs nilai terpilih */
+.hero-picker-display {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-faint);  /* placeholder */
+}
+
+.hero-picker-display.has-value {
+  color: var(--color-text);        /* nilai terpilih */
+}
+
+/* Chevron arrow, sama persis dengan background-image .form-select */
+.hero-picker-arrow {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-left: var(--space-2);
+  color: var(--color-text-muted);
+  transition: transform var(--transition-interactive);
+  pointer-events: none;
+}
+
+.hero-picker-wrap.is-open .hero-picker-arrow {
+  transform: rotate(180deg);
+}
+
+/* Dropdown panel */
+.hero-picker-panel {
+  position: absolute;
+  z-index: 200;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 300px;
+  overflow: hidden;
+}
+
+/* Search input di dalam panel — pakai .form-input look */
+.hero-picker-search {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-offset);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  outline: none;
+  flex-shrink: 0;
+}
+
+.hero-picker-search:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.hero-picker-search::placeholder {
+  color: var(--color-text-faint);
+}
+
+/* Scrollable grid area */
+.hero-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+
+.hero-picker-grid::-webkit-scrollbar       { width: 4px; }
+.hero-picker-grid::-webkit-scrollbar-track { background: transparent; }
+.hero-picker-grid::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: var(--radius-full);
+}
+
+/* Kolom lebih banyak di layar lebar */
+@media (min-width: 480px) {
+  .hero-picker-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (min-width: 720px) {
+  .hero-picker-grid   { grid-template-columns: repeat(5, 1fr); }
+  .hero-picker-panel  { max-height: 360px; }
+}
+
+/* Hero item — sama dengan .nav-item look dari sidebar */
+.hero-item {
+  padding: var(--space-2) var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background     var(--transition-interactive),
+              border-color   var(--transition-interactive),
+              color          var(--transition-interactive);
+}
+
+.hero-item:hover {
+  background: var(--color-surface-offset);
+  color: var(--color-text);
+}
+
+/* Active/terpilih — sama dengan .nav-item.active */
+.hero-item.is-active {
+  background: var(--color-primary-highlight);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+/* Empty state di dalam picker */
+.hero-picker-empty {
+  text-align: center;
+  padding: var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* ============================================================
    RESPONSIVE BREAKPOINTS
    ============================================================ */
 @media (max-width: 900px) {
