@@ -156,7 +156,7 @@
             <div class="form-group hidden" id="eventGroup">
               <label class="form-label" for="eventSelect" id="eventLabel">Pilih Event</label>
               <select class="form-select" id="eventSelect" name="event">
-                <option value="">Pilih Tournament/League</option>
+                <option value="" disabled>Pilih Tournament/League</option>
               </select>
             </div>
 
@@ -165,7 +165,7 @@
               <select class="form-select" id="matchFormat" name="matchFormat">
                 <option value="BO1">Best of 1</option>
                 <option value="BO2">Best of 2</option>
-                <option value="BO3" selected>Best of 3</option>
+                <option value="BO3">Best of 3</option>
                 <option value="BO4">Best of 4</option>
                 <option value="BO5">Best of 5</option>
                 <option value="BO7">Best of 7</option>
@@ -191,32 +191,6 @@
               <div class="form-group hidden" id="timeGroup">
                 <label class="form-label" for="matchTimeInput">Jam Match</label>
                 <input class="form-input" type="time" id="matchTimeInput" name="matchTime"/>
-              </div>
-            </div>
-
-            <!-- Skor (selalu tampil, opsional diisi) -->
-            <div class="form-grid-2" id="scoreGroup">
-              <div class="form-group">
-                <label class="form-label" for="ourScore">Skor Kita</label>
-                <input
-                  class="form-input"
-                  type="number"
-                  id="ourScore"
-                  name="ourScore"
-                  min="0"
-                  placeholder="0"
-                />
-              </div>
-              <div class="form-group">
-                <label class="form-label" for="opponentScore">Skor Lawan</label>
-                <input
-                  class="form-input"
-                  type="number"
-                  id="opponentScore"
-                  name="opponentScore"
-                  min="0"
-                  placeholder="0"
-                />
               </div>
             </div>
 
