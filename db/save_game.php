@@ -76,45 +76,42 @@ try {
 
     $gameId = (int)$pdo->lastInsertId();
 
-    // ── Insert players (dengan KDA computed) ──
+    // ── Insert game_players ──
+    // FIX BUG C: gunakan player_id (FK ke tabel players) bukan player_name
+    // FIX BUG B: kda dibaca dari payload, tidak dihitung otomatis
     $playerStmt = $pdo->prepare('
-        INSERT INTO game_players (game_id, role_name, player_name, hero_name, kills, deaths, assists, total_gold, kda)
-        VALUES (:game_id, :role_name, :player_name, :hero_name, :kills, :deaths, :assists, :total_gold, :kda)
+        INSERT INTO game_players (game_id, player_id, role_name, hero_name, kills, deaths, assists, kda, total_gold)
+        VALUES (:game_id, :player_id, :role_name, :hero_name, :kills, :deaths, :assists, :kda, :total_gold)
     ');
 
     foreach ($playerStats as $player) {
-        $kills   = (int)($player['kills']   ?? 0);
-        $deaths  = (int)($player['deaths']  ?? 0);
-        $assists = (int)($player['assists'] ?? 0);
-        $kda     = round(($kills + $assists) / max($deaths, 1), 2);
+        $playerId  = (int)($player['playerId']  ?? 0);
+        $heroName  = trim($player['heroName']   ?? '');
+        $roleName  = trim($player['roleName']   ?? '');
+        $kills     = (int)($player['kills']     ?? 0);
+        $deaths    = (int)($player['deaths']    ?? 0);
+        $assists   = (int)($player['assists']   ?? 0);
+        $kda       = round((float)($player['kda'] ?? 0.0), 2);
+        $totalGold = (int)($player['totalGold'] ?? 0);
+
+        if ($playerId <= 0) {
+            $pdo->rollBack();
+            http_response_code(422);
+            echo json_encode(['ok' => false, 'message' => "player_id tidak valid untuk role {$roleName}"]);
+            exit;
+        }
 
         $playerStmt->execute([
-            ':game_id'     => $gameId,
-            ':role_name'   => $player['roleName'],
-            ':player_name' => $player['playerName'],
-            ':hero_name'   => $player['heroName'],
-            ':kills'       => $kills,
-            ':deaths'      => $deaths,
-            ':assists'     => $assists,
-            ':total_gold'  => (int)($player['totalGold'] ?? 0),
-            ':kda'         => $kda,
+            ':game_id'    => $gameId,
+            ':player_id'  => $playerId,
+            ':role_name'  => $roleName,
+            ':hero_name'  => $heroName,
+            ':kills'      => $kills,
+            ':deaths'     => $deaths,
+            ':assists'    => $assists,
+            ':kda'        => $kda,
+            ':total_gold' => $totalGold,
         ]);
-    }
-
-    // ── FIX: Sync tabel players dari game_players ──
-    // Setiap player_name yang tampil di game_players wajib ada di tabel players.
-    // Jika belum ada, insert dengan is_active=1.
-    // Jika sudah ada tapi is_active=0, update menjadi aktif.
-    $syncStmt = $pdo->prepare(
-        'INSERT INTO players (name, is_active)
-         VALUES (:name, 1)
-         ON DUPLICATE KEY UPDATE is_active = 1'
-    );
-    foreach ($playerStats as $player) {
-        $name = trim($player['playerName'] ?? '');
-        if ($name !== '') {
-            $syncStmt->execute([':name' => $name]);
-        }
     }
 
     $pdo->commit();

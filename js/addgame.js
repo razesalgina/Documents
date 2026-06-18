@@ -45,7 +45,7 @@
   }
 
   // ═══════════════════════════════════════════════════════
-  // PLAYER DROPDOWN — filter by role
+  // PLAYER DROPDOWN — filter by role, value = player id
   // ═══════════════════════════════════════════════════════
 
   function refreshPlayerDropdown(roleKey) {
@@ -61,10 +61,11 @@
     );
     const pool = filtered.length > 0 ? filtered : allPlayers;
 
+    // FIX BUG C: value = p.id (integer FK), label = p.name
     sel.innerHTML = `<option value="" disabled>Pilih Pemain</option>` +
-      pool.map((p) => `<option value="${p.name}">${p.name}</option>`).join('');
+      pool.map((p) => `<option value="${p.id}">${p.name}</option>`).join('');
 
-    sel.value = (prevVal && pool.some((p) => p.name === prevVal)) ? prevVal : '';
+    sel.value = (prevVal && pool.some((p) => String(p.id) === prevVal)) ? prevVal : '';
   }
 
   function refreshAllPlayerDropdowns() {
@@ -127,6 +128,7 @@
       const kills   = card.querySelector('.input-kills');
       const deaths  = card.querySelector('.input-deaths');
       const assists = card.querySelector('.input-assists');
+      const kda     = card.querySelector('.input-kda');   // FIX BUG A
       const gold    = card.querySelector('.input-gold');
       if (
         player?.value &&
@@ -134,6 +136,7 @@
         kills?.value.trim()   !== '' &&
         deaths?.value.trim()  !== '' &&
         assists?.value.trim() !== '' &&
+        kda?.value.trim()     !== '' &&               // FIX BUG A
         gold?.value.trim()    !== ''
       ) filled++;
     });
@@ -205,6 +208,7 @@
       const kills   = card.querySelector('.input-kills');
       const deaths  = card.querySelector('.input-deaths');
       const assists = card.querySelector('.input-assists');
+      const kda     = card.querySelector('.input-kda');   // FIX BUG A
       const gold    = card.querySelector('.input-gold');
 
       const switchToRole = () => {
@@ -217,7 +221,6 @@
         switchToRole(); markError(player);
         return { valid: false, message: `Pilih pemain untuk ${label}.` };
       }
-      // Hero: error highlight pada wrapper button open-hero-picker
       if (!heroVal) {
         switchToRole();
         const btn = card.querySelector('.open-hero-picker');
@@ -235,6 +238,11 @@
       if (!assists?.value.trim()) {
         switchToRole(); markError(assists);
         return { valid: false, message: `Assist untuk ${label} wajib diisi.` };
+      }
+      // FIX BUG A: validasi kda
+      if (!kda?.value.trim()) {
+        switchToRole(); markError(kda);
+        return { valid: false, message: `KDA untuk ${label} wajib diisi.` };
       }
       if (!gold?.value.trim()) {
         switchToRole(); markError(gold);
@@ -263,13 +271,14 @@
     return ROLES.map(({ key }) => {
       const card = document.getElementById(`card-${key}`);
       return {
-        roleName:   key,
-        playerName: card?.querySelector('.select-player')?.value || '',
-        heroName:   getHeroValue(key),
-        kills:      Number(card?.querySelector('.input-kills')?.value)   || 0,
-        deaths:     Number(card?.querySelector('.input-deaths')?.value)  || 0,
-        assists:    Number(card?.querySelector('.input-assists')?.value) || 0,
-        totalGold:  Number(card?.querySelector('.input-gold')?.value)    || 0,
+        roleName:  key,
+        playerId:  Number(card?.querySelector('.select-player')?.value) || 0, // FIX BUG C: id bukan name
+        heroName:  getHeroValue(key),
+        kills:     Number(card?.querySelector('.input-kills')?.value)   || 0,
+        deaths:    Number(card?.querySelector('.input-deaths')?.value)  || 0,
+        assists:   Number(card?.querySelector('.input-assists')?.value) || 0,
+        kda:       parseFloat(card?.querySelector('.input-kda')?.value) || 0, // FIX BUG B
+        totalGold: Number(card?.querySelector('.input-gold')?.value)    || 0,
       };
     });
   }
