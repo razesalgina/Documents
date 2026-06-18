@@ -29,27 +29,36 @@ if ($method === 'GET' && $action === 'list') {
             $gameIds  = array_column($games, 'id');
             $inClause = implode(',', array_fill(0, count($gameIds), '?'));
 
-            // MVP: player dengan KDA tertinggi per game
-            // JOIN players untuk ambil nama; player_role sudah ada di game_players
+            // MVP query — kompatibel only_full_group_by:
+            // Step 1: subquery ambil player_id dengan KDA tertinggi per game_id (GROUP BY game_id saja)
+            // Step 2: JOIN players di luar subquery untuk ambil nama
+            // Hasilnya: satu baris per game_id, tanpa kolom non-aggregate di SELECT luar
             $mvpStmt = $pdo->prepare(
-                "SELECT gp.game_id, p.name AS player_name,
-                        ROUND((gp.kills + gp.assists) / GREATEST(gp.deaths, 1), 2) AS kda
-                 FROM game_players gp
-                 JOIN players p ON p.id = gp.player_id
-                 INNER JOIN (
-                     SELECT game_id,
+                "SELECT best.game_id, p.name AS player_name
+                 FROM (
+                     SELECT game_id, player_id,
                             MAX((kills + assists) / GREATEST(deaths, 1)) AS max_kda
                      FROM game_players
                      WHERE game_id IN ($inClause)
+                     GROUP BY game_id, player_id
+                 ) ranked
+                 INNER JOIN (
+                     SELECT game_id,
+                            MAX((kills + assists) / GREATEST(deaths, 1)) AS top_kda
+                     FROM game_players
+                     WHERE game_id IN ($inClause)
                      GROUP BY game_id
-                 ) best ON gp.game_id = best.game_id
-                       AND (gp.kills + gp.assists) / GREATEST(gp.deaths, 1) = best.max_kda
-                 WHERE gp.game_id IN ($inClause)
-                 GROUP BY gp.game_id"
+                 ) best ON ranked.game_id = best.game_id
+                       AND ranked.max_kda = best.top_kda
+                 JOIN players p ON p.id = ranked.player_id
+                 GROUP BY best.game_id, p.id"
             );
+            // $inClause dipakai 2x → merge gameIds dua kali
             $mvpStmt->execute(array_merge($gameIds, $gameIds));
+
             $mvpMap = [];
             foreach ($mvpStmt->fetchAll() as $row) {
+                // Jika tie KDA, ambil yang pertama saja (GROUP BY menjamin satu baris per game)
                 $mvpMap[(int)$row['game_id']] = $row['player_name'];
             }
             foreach ($games as &$game) {
@@ -88,7 +97,7 @@ if ($method === 'GET' && $action === 'get') {
             exit;
         }
 
-        // player_role diambil langsung dari game_players (sudah disimpan saat insert)
+        // player_role diambil dari game_players (tersimpan saat insert dari primary_role)
         // player_name di-JOIN dari tabel players
         $pStmt = $pdo->prepare(
             'SELECT gp.player_role, p.name AS player_name, p.id AS player_id,
@@ -213,7 +222,7 @@ if ($method === 'POST') {
             $pdo->prepare('DELETE FROM game_players WHERE game_id = :gid')
                 ->execute([':gid' => $id]);
 
-            // Ambil primary_role dari players (batch) untuk auto-fill player_role
+            // Batch fetch primary_role dari players untuk auto-fill player_role
             $playerIds = array_filter(array_map(fn($p) => (int)($p['playerId'] ?? 0), $playerStats));
             $roleMap   = [];
             if (!empty($playerIds)) {
@@ -236,7 +245,7 @@ if ($method === 'POST') {
                 if ($playerId <= 0) {
                     $pdo->rollBack();
                     http_response_code(422);
-                    echo json_encode(['ok' => false, 'message' => "player_id tidak valid"]);
+                    echo json_encode(['ok' => false, 'message' => 'player_id tidak valid']);
                     exit;
                 }
                 $k          = (int)($p['kills']   ?? 0);
