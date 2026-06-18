@@ -14,7 +14,6 @@ if ($method === 'GET' && $action === 'list') {
              FROM players ORDER BY is_active DESC, name ASC'
         );
         $rows = $stmt->fetchAll();
-        // cast types
         foreach ($rows as &$r) {
             $r['id']        = (int)$r['id'];
             $r['is_active'] = (int)$r['is_active'];
@@ -27,17 +26,15 @@ if ($method === 'GET' && $action === 'list') {
     exit;
 }
 
-// ── GET stats (untuk dashboard) ────────────────────
+// ── GET stats ─────────────────────────────────
 if ($method === 'GET' && $action === 'stats') {
     try {
-        // Jumlah active + total
         $row = $pdo->query(
             'SELECT COUNT(*) as total,
                     SUM(is_active = 1) as active_count
              FROM players'
         )->fetch();
 
-        // Distribusi role aktif
         $roleRows = $pdo->query(
             "SELECT primary_role, COUNT(*) as cnt
              FROM players WHERE is_active = 1
@@ -46,13 +43,14 @@ if ($method === 'GET' && $action === 'stats') {
         $roleMap = [];
         foreach ($roleRows as $rr) $roleMap[$rr['primary_role']] = (int)$rr['cnt'];
 
-        // Top KDA player (dari game_players)
+        // FIX: player_name → JOIN players ON p.id = gp.player_id → p.name
         $topKda = $pdo->query(
-            'SELECT player_name,
-                    ROUND(AVG(kda), 2) AS avg_kda,
+            'SELECT p.name AS player_name,
+                    ROUND(AVG(gp.kda), 2) AS avg_kda,
                     COUNT(*) AS games
-             FROM game_players
-             GROUP BY player_name
+             FROM game_players gp
+             JOIN players p ON p.id = gp.player_id
+             GROUP BY gp.player_id, p.name
              ORDER BY avg_kda DESC
              LIMIT 5'
         )->fetchAll();
@@ -78,8 +76,8 @@ if ($method === 'POST') {
 
     // ADD
     if ($action === 'add') {
-        $name    = trim($data['name']          ?? '');
-        $primary = trim($data['primary_role']  ?? '');
+        $name    = trim($data['name']           ?? '');
+        $primary = trim($data['primary_role']   ?? '');
         $second  = trim($data['secondary_role'] ?? '') ?: null;
         $active  = isset($data['is_active']) ? (int)(bool)$data['is_active'] : 1;
 
@@ -104,11 +102,13 @@ if ($method === 'POST') {
             $stmt->execute([':n' => $name, ':p' => $primary, ':s' => $second, ':a' => $active]);
             $id = (int)$pdo->lastInsertId();
 
-            // re-fetch agar created_at ikut
-            $row = $pdo->prepare('SELECT id, name, primary_role, secondary_role, is_active, created_at FROM players WHERE id=:id');
+            $row = $pdo->prepare(
+                'SELECT id, name, primary_role, secondary_role, is_active, created_at
+                 FROM players WHERE id=:id'
+            );
             $row->execute([':id' => $id]);
             $player = $row->fetch();
-            $player['id'] = (int)$player['id'];
+            $player['id']        = (int)$player['id'];
             $player['is_active'] = (int)$player['is_active'];
 
             echo json_encode(['ok' => true, 'player' => $player]);
@@ -122,8 +122,8 @@ if ($method === 'POST') {
     // UPDATE
     if ($action === 'update') {
         $id      = (int)($data['id'] ?? 0);
-        $name    = trim($data['name']          ?? '');
-        $primary = trim($data['primary_role']  ?? '');
+        $name    = trim($data['name']           ?? '');
+        $primary = trim($data['primary_role']   ?? '');
         $second  = trim($data['secondary_role'] ?? '') ?: null;
 
         $validRoles = ['jungler','roamer','midlaner','goldlaner','explaner'];
@@ -154,14 +154,23 @@ if ($method === 'POST') {
     // TOGGLE
     if ($action === 'toggle') {
         $id = (int)($data['id'] ?? 0);
-        if ($id <= 0) { http_response_code(400); echo json_encode(['ok'=>false,'message'=>'ID tidak valid']); exit; }
+        if ($id <= 0) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'message' => 'ID tidak valid']);
+            exit;
+        }
         try {
             $row = $pdo->prepare('SELECT is_active FROM players WHERE id=:id');
             $row->execute([':id' => $id]);
             $p = $row->fetch();
-            if (!$p) { http_response_code(404); echo json_encode(['ok'=>false,'message'=>'Pemain tidak ditemukan']); exit; }
+            if (!$p) {
+                http_response_code(404);
+                echo json_encode(['ok' => false, 'message' => 'Pemain tidak ditemukan']);
+                exit;
+            }
             $new = $p['is_active'] ? 0 : 1;
-            $pdo->prepare('UPDATE players SET is_active=:a WHERE id=:id')->execute([':a'=>$new,':id'=>$id]);
+            $pdo->prepare('UPDATE players SET is_active=:a WHERE id=:id')
+                ->execute([':a' => $new, ':id' => $id]);
             echo json_encode(['ok' => true, 'is_active' => $new]);
         } catch (Throwable $e) {
             http_response_code(500);
@@ -173,9 +182,13 @@ if ($method === 'POST') {
     // DELETE
     if ($action === 'delete') {
         $id = (int)($data['id'] ?? 0);
-        if ($id <= 0) { http_response_code(400); echo json_encode(['ok'=>false,'message'=>'ID tidak valid']); exit; }
+        if ($id <= 0) {
+            http_response_code(400);
+            echo json_encode(['ok' => false, 'message' => 'ID tidak valid']);
+            exit;
+        }
         try {
-            $pdo->prepare('DELETE FROM players WHERE id=:id')->execute([':id'=>$id]);
+            $pdo->prepare('DELETE FROM players WHERE id=:id')->execute([':id' => $id]);
             echo json_encode(['ok' => true]);
         } catch (Throwable $e) {
             http_response_code(500);
