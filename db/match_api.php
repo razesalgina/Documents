@@ -19,6 +19,14 @@ function determineResult(int $our, int $opp): string {
     return 'draw';
 }
 
+/**
+ * Kembalikan default format berdasarkan type match.
+ * Ranked → BO1, semua lainnya → BO3
+ */
+function defaultFormat(string $type): string {
+    return $type === 'ranked' ? 'BO1' : 'BO3';
+}
+
 // ── GET list ────────────────────────────────
 if ($method === 'GET' && $action === 'list') {
     try {
@@ -77,24 +85,42 @@ if ($method === 'POST') {
 
     // ─── DELETE ─────────────────────────────────
     if ($action === 'delete') {
-        $id = (int)($data['id'] ?? 0);
+        $id       = (int)($data['id'] ?? 0);
+        $mode     = $data['mode'] ?? 'cascade'; // 'cascade' | 'detach'
+
         if ($id <= 0) {
             http_response_code(400);
             echo json_encode(['ok' => false, 'message' => 'ID tidak valid']);
             exit;
         }
+
         try {
+            $pdo->beginTransaction();
+
+            if ($mode === 'cascade') {
+                // Hapus semua games milik match ini
+                $pdo->prepare('DELETE FROM games WHERE match_id = :mid')->execute([':mid' => $id]);
+            } else {
+                // Detach: lepas game dari match, data game tetap ada
+                $pdo->prepare('UPDATE games SET match_id = NULL WHERE match_id = :mid')->execute([':mid' => $id]);
+            }
+
             $stmt = $pdo->prepare('DELETE FROM matches WHERE id = :id');
             $stmt->execute([':id' => $id]);
+
             if ($stmt->rowCount() === 0) {
+                $pdo->rollBack();
                 http_response_code(404);
                 echo json_encode(['ok' => false, 'message' => 'Match tidak ditemukan']);
                 exit;
             }
+
+            $pdo->commit();
             echo json_encode(['ok' => true]);
         } catch (Throwable $e) {
+            $pdo->rollBack();
             http_response_code(500);
-            echo json_encode(['ok' => false, 'message' => 'Gagal menghapus match']);
+            echo json_encode(['ok' => false, 'message' => 'Gagal menghapus match: ' . $e->getMessage()]);
         }
         exit;
     }
@@ -102,7 +128,9 @@ if ($method === 'POST') {
     // ─── ADD ────────────────────────────────────
     if ($action === 'add') {
         $type          = strtolower(trim($data['type'] ?? ''));
-        $format        = strtoupper(trim($data['format'] ?? '')) ?: null;
+        // Jika format tidak dikirim atau kosong, gunakan default sesuai type
+        $rawFormat     = strtoupper(trim($data['format'] ?? ''));
+        $format        = $rawFormat !== '' ? $rawFormat : defaultFormat($type);
         $opponentName  = trim($data['opponent_name'] ?? '') ?: null;
         $matchDate     = trim($data['match_date'] ?? '');
         $matchTime     = trim($data['match_time'] ?? '');
@@ -186,7 +214,8 @@ if ($method === 'POST') {
         }
 
         $type          = strtolower(trim($data['type'] ?? ''));
-        $format        = strtoupper(trim($data['format'] ?? '')) ?: null;
+        $rawFormat     = strtoupper(trim($data['format'] ?? ''));
+        $format        = $rawFormat !== '' ? $rawFormat : defaultFormat($type);
         $opponentName  = trim($data['opponent_name'] ?? '') ?: null;
         $matchDate     = trim($data['match_date'] ?? '');
         $matchTime     = trim($data['match_time'] ?? '');
