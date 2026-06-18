@@ -8,7 +8,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/hero-picker.css">
   <script src="js/global.js" defer></script>
+  <script src="js/hero-picker.js" defer></script>
   <script src="js/addgame.js" defer></script>
 </head>
 <body>
@@ -114,7 +116,7 @@
 
       <div class="toast-container" id="toastContainer"></div>
 
-      <!-- TAHAP 1 -->
+      <!-- ===== TAHAP 1 ===== -->
       <section class="card" id="tahap1">
         <div class="card-header">
           <h2 class="section-title">Tahap 1: Informasi Game</h2>
@@ -158,7 +160,7 @@
         </div>
       </section>
 
-      <!-- TAHAP 2 -->
+      <!-- ===== TAHAP 2 ===== -->
       <section class="card section-spaced hidden" id="tahap2">
         <div class="card-header">
           <h2 class="section-title">Tahap 2: Statistik Pemain</h2>
@@ -192,9 +194,10 @@
           </div>
         </div>
 
-        <!-- Role Card Container (hanya tampil 1 sekaligus) -->
+        <!-- Role Card Container -->
         <div id="playerContainer">
 
+          <!-- JUNGLER -->
           <article class="role-card" id="card-jungler">
             <div class="role-head">
               <span class="role-name">Jungler</span>
@@ -203,9 +206,26 @@
             <select class="form-select select-player" required>
               <option value="" disabled selected>Pilih Pemain</option>
             </select>
-            <select class="form-select select-hero field-spacer-sm" required>
-              <option value="" disabled selected>Pilih Hero</option>
-            </select>
+
+            <!-- Hero Picker: Jungler -->
+            <div class="form-group field-spacer-sm">
+              <label class="form-label">Hero</label>
+              <div class="hero-picker-wrapper"
+                   data-picker-input="hero_jungler"
+                   data-picker-label="preview-hero-jungler">
+                <button type="button" class="open-hero-picker" aria-haspopup="dialog">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                  Pilih Hero
+                </button>
+                <span class="hero-picker-preview" id="preview-hero-jungler">
+                  <span class="preview-empty">Belum dipilih</span>
+                </span>
+              </div>
+              <input type="hidden" id="hero_jungler" name="hero_jungler" />
+            </div>
+
             <div class="grid-3 field-spacer-md">
               <input class="form-input input-kills"   type="number" placeholder="Kill"   min="0" required />
               <input class="form-input input-deaths"  type="number" placeholder="Death"  min="0" required />
@@ -214,6 +234,7 @@
             <input class="form-input input-gold field-spacer-md" type="number" placeholder="Total Gold" min="0" required />
           </article>
 
+          <!-- ROAMER -->
           <article class="role-card hidden" id="card-roamer">
             <div class="role-head">
               <span class="role-name">Roamer</span>
@@ -222,9 +243,25 @@
             <select class="form-select select-player" required>
               <option value="" disabled selected>Pilih Pemain</option>
             </select>
-            <select class="form-select select-hero field-spacer-sm" required>
-              <option value="" disabled selected>Pilih Hero</option>
-            </select>
+
+            <div class="form-group field-spacer-sm">
+              <label class="form-label">Hero</label>
+              <div class="hero-picker-wrapper"
+                   data-picker-input="hero_roamer"
+                   data-picker-label="preview-hero-roamer">
+                <button type="button" class="open-hero-picker" aria-haspopup="dialog">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                  Pilih Hero
+                </button>
+                <span class="hero-picker-preview" id="preview-hero-roamer">
+                  <span class="preview-empty">Belum dipilih</span>
+                </span>
+              </div>
+              <input type="hidden" id="hero_roamer" name="hero_roamer" />
+            </div>
+
             <div class="grid-3 field-spacer-md">
               <input class="form-input input-kills"   type="number" placeholder="Kill"   min="0" required />
               <input class="form-input input-deaths"  type="number" placeholder="Death"  min="0" required />
@@ -233,6 +270,7 @@
             <input class="form-input input-gold field-spacer-md" type="number" placeholder="Total Gold" min="0" required />
           </article>
 
+          <!-- MID LANER -->
           <article class="role-card hidden" id="card-midlaner">
             <div class="role-head">
               <span class="role-name">Mid Laner</span>
@@ -241,9 +279,25 @@
             <select class="form-select select-player" required>
               <option value="" disabled selected>Pilih Pemain</option>
             </select>
-            <select class="form-select select-hero field-spacer-sm" required>
-              <option value="" disabled selected>Pilih Hero</option>
-            </select>
+
+            <div class="form-group field-spacer-sm">
+              <label class="form-label">Hero</label>
+              <div class="hero-picker-wrapper"
+                   data-picker-input="hero_midlaner"
+                   data-picker-label="preview-hero-midlaner">
+                <button type="button" class="open-hero-picker" aria-haspopup="dialog">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                  Pilih Hero
+                </button>
+                <span class="hero-picker-preview" id="preview-hero-midlaner">
+                  <span class="preview-empty">Belum dipilih</span>
+                </span>
+              </div>
+              <input type="hidden" id="hero_midlaner" name="hero_midlaner" />
+            </div>
+
             <div class="grid-3 field-spacer-md">
               <input class="form-input input-kills"   type="number" placeholder="Kill"   min="0" required />
               <input class="form-input input-deaths"  type="number" placeholder="Death"  min="0" required />
@@ -252,6 +306,7 @@
             <input class="form-input input-gold field-spacer-md" type="number" placeholder="Total Gold" min="0" required />
           </article>
 
+          <!-- EXP LANER -->
           <article class="role-card hidden" id="card-explaner">
             <div class="role-head">
               <span class="role-name">Exp Laner</span>
@@ -260,9 +315,25 @@
             <select class="form-select select-player" required>
               <option value="" disabled selected>Pilih Pemain</option>
             </select>
-            <select class="form-select select-hero field-spacer-sm" required>
-              <option value="" disabled selected>Pilih Hero</option>
-            </select>
+
+            <div class="form-group field-spacer-sm">
+              <label class="form-label">Hero</label>
+              <div class="hero-picker-wrapper"
+                   data-picker-input="hero_explaner"
+                   data-picker-label="preview-hero-explaner">
+                <button type="button" class="open-hero-picker" aria-haspopup="dialog">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                  Pilih Hero
+                </button>
+                <span class="hero-picker-preview" id="preview-hero-explaner">
+                  <span class="preview-empty">Belum dipilih</span>
+                </span>
+              </div>
+              <input type="hidden" id="hero_explaner" name="hero_explaner" />
+            </div>
+
             <div class="grid-3 field-spacer-md">
               <input class="form-input input-kills"   type="number" placeholder="Kill"   min="0" required />
               <input class="form-input input-deaths"  type="number" placeholder="Death"  min="0" required />
@@ -271,6 +342,7 @@
             <input class="form-input input-gold field-spacer-md" type="number" placeholder="Total Gold" min="0" required />
           </article>
 
+          <!-- GOLD LANER -->
           <article class="role-card hidden" id="card-goldlaner">
             <div class="role-head">
               <span class="role-name">Gold Laner</span>
@@ -279,9 +351,25 @@
             <select class="form-select select-player" required>
               <option value="" disabled selected>Pilih Pemain</option>
             </select>
-            <select class="form-select select-hero field-spacer-sm" required>
-              <option value="" disabled selected>Pilih Hero</option>
-            </select>
+
+            <div class="form-group field-spacer-sm">
+              <label class="form-label">Hero</label>
+              <div class="hero-picker-wrapper"
+                   data-picker-input="hero_goldlaner"
+                   data-picker-label="preview-hero-goldlaner">
+                <button type="button" class="open-hero-picker" aria-haspopup="dialog">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                  Pilih Hero
+                </button>
+                <span class="hero-picker-preview" id="preview-hero-goldlaner">
+                  <span class="preview-empty">Belum dipilih</span>
+                </span>
+              </div>
+              <input type="hidden" id="hero_goldlaner" name="hero_goldlaner" />
+            </div>
+
             <div class="grid-3 field-spacer-md">
               <input class="form-input input-kills"   type="number" placeholder="Kill"   min="0" required />
               <input class="form-input input-deaths"  type="number" placeholder="Death"  min="0" required />
@@ -290,7 +378,7 @@
             <input class="form-input input-gold field-spacer-md" type="number" placeholder="Total Gold" min="0" required />
           </article>
 
-        </div>
+        </div><!-- /playerContainer -->
 
         <div class="step-actions">
           <button class="btn btn-secondary" id="btnBackStep" type="button">Kembali ke Tahap 1</button>
