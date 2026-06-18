@@ -29,10 +29,12 @@ if ($method === 'GET' && $action === 'list') {
             $gameIds  = array_column($games, 'id');
             $inClause = implode(',', array_fill(0, count($gameIds), '?'));
 
+            // FIX: player_name → JOIN players ON p.id = gp.player_id → p.name
             $mvpStmt = $pdo->prepare(
-                "SELECT gp.game_id, gp.player_name,
+                "SELECT gp.game_id, p.name AS player_name,
                         ROUND((gp.kills + gp.assists) / GREATEST(gp.deaths, 1), 2) AS kda
                  FROM game_players gp
+                 JOIN players p ON p.id = gp.player_id
                  INNER JOIN (
                      SELECT game_id,
                             MAX((kills + assists) / GREATEST(deaths, 1)) AS max_kda
@@ -85,9 +87,14 @@ if ($method === 'GET' && $action === 'get') {
             exit;
         }
 
+        // FIX: player_role → role_name, player_name → JOIN players
         $pStmt = $pdo->prepare(
-            'SELECT role_name, player_name, hero_name, kills, deaths, assists, total_gold
-             FROM game_players WHERE game_id = :gid ORDER BY id ASC'
+            'SELECT gp.role_name, p.name AS player_name, p.id AS player_id,
+                    gp.hero_name, gp.kills, gp.deaths, gp.assists, gp.kda, gp.total_gold
+             FROM game_players gp
+             JOIN players p ON p.id = gp.player_id
+             WHERE gp.game_id = :gid
+             ORDER BY gp.id ASC'
         );
         $pStmt->execute([':gid' => $id]);
         $game['players'] = $pStmt->fetchAll();
@@ -115,15 +122,12 @@ if ($method === 'GET' && $action === 'players') {
 }
 
 // ── GET: heroes list ──────────────────────────
-// Tabel mlbb_heroes memiliki kolom: id, name, created_at
 if ($method === 'GET' && $action === 'heroes') {
     try {
-        // Coba kolom 'name' terlebih dahulu (sesuai screenshot DB)
         $stmt = $pdo->query('SELECT name FROM mlbb_heroes ORDER BY name ASC');
         $heroes = $stmt->fetchAll(PDO::FETCH_COLUMN);
         echo json_encode(['ok' => true, 'heroes' => $heroes]);
     } catch (Throwable $e) {
-        // Fallback: coba kolom 'nama_hero' (schema lama)
         try {
             $stmt2 = $pdo->query('SELECT nama_hero FROM mlbb_heroes ORDER BY nama_hero ASC');
             $heroes = $stmt2->fetchAll(PDO::FETCH_COLUMN);
@@ -206,25 +210,33 @@ if ($method === 'POST') {
             $pdo->prepare('DELETE FROM game_players WHERE game_id = :gid')
                 ->execute([':gid' => $id]);
 
+            // FIX: player_role/player_name → player_id + role_name, kda dari payload
             $pStmt = $pdo->prepare(
-                'INSERT INTO game_players (game_id, role_name, player_name, hero_name, kills, deaths, assists, total_gold, kda)
-                 VALUES (:gid, :role, :player, :hero, :k, :d, :a, :g, :kda)'
+                'INSERT INTO game_players (game_id, player_id, role_name, hero_name, kills, deaths, assists, kda, total_gold)
+                 VALUES (:gid, :player_id, :role, :hero, :k, :d, :a, :kda, :g)'
             );
             foreach ($playerStats as $p) {
+                $playerId = (int)($p['playerId'] ?? 0);
+                if ($playerId <= 0) {
+                    $pdo->rollBack();
+                    http_response_code(422);
+                    echo json_encode(['ok' => false, 'message' => "player_id tidak valid untuk role {$p['roleName']}"]);
+                    exit;
+                }
                 $k   = (int)($p['kills']   ?? 0);
                 $d   = (int)($p['deaths']  ?? 0);
                 $a   = (int)($p['assists'] ?? 0);
-                $kda = round(($k + $a) / max($d, 1), 2);
+                $kda = round((float)($p['kda'] ?? (($k + $a) / max($d, 1))), 2);
                 $pStmt->execute([
-                    ':gid'    => $id,
-                    ':role'   => $p['roleName'],
-                    ':player' => $p['playerName'],
-                    ':hero'   => $p['heroName'],
-                    ':k'      => $k,
-                    ':d'      => $d,
-                    ':a'      => $a,
-                    ':g'      => (int)($p['totalGold'] ?? 0),
-                    ':kda'    => $kda,
+                    ':gid'       => $id,
+                    ':player_id' => $playerId,
+                    ':role'      => $p['roleName'],
+                    ':hero'      => $p['heroName'],
+                    ':k'         => $k,
+                    ':d'         => $d,
+                    ':a'         => $a,
+                    ':kda'       => $kda,
+                    ':g'         => (int)($p['totalGold'] ?? 0),
                 ]);
             }
 
