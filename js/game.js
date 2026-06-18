@@ -7,6 +7,22 @@
   // Cache detail yang sudah di-fetch: { [gameId]: players[] }
   const detailCache = {};
 
+  // ── Role map ── seragam dengan index.js ─────────────────────────────
+  const ROLE_LABEL = {
+    jungler:   'Jungler',
+    roamer:    'Roamer',
+    midlaner:  'Mid Laner',
+    explaner:  'Exp Laner',
+    goldlaner: 'Gold Laner',
+  };
+  const ROLE_BADGE = {
+    jungler:   'badge-green',
+    roamer:    'badge-red',
+    midlaner:  'badge-blue',
+    explaner:  'badge-neutral',
+    goldlaner: 'badge-yellow',
+  };
+
   const apiBase = () => window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
 
   function showToast(msg, type) {
@@ -26,7 +42,7 @@
     return isNaN(n) ? Infinity : n;
   }
 
-  // ── Badge helpers ────────────────────────────
+  // ── Badge helpers ───────────────────────────────────────────────
   function resultBadgeHtml(result) {
     const r = (result || '').toLowerCase();
     const map = { win: 'badge badge-green', lose: 'badge badge-red', draw: 'badge badge-yellow' };
@@ -42,29 +58,38 @@
     ].join(' ');
   }
 
+  function roleBadgeHtml(playerRole) {
+    const key    = (playerRole || '').toLowerCase();
+    const label  = ROLE_LABEL[key] || playerRole || '—';
+    const cls    = ROLE_BADGE[key]  || 'badge-neutral';
+    // badge-xs: font-size 10px — didefinisikan di CSS global
+    return `<span class="badge badge-xs ${cls}">${label}</span>`;
+  }
+
   function kdaClass(kda) {
     if (kda >= 3) return 'kda-high';
     if (kda >= 2) return 'kda-mid';
     return 'kda-low';
   }
 
-  // ── Detail table HTML ────────────────────────
+  // ── Detail table HTML ──────────────────────────────────────────────
   function buildDetailHtml(gameNum, players) {
     if (!players || players.length === 0) {
       return `<div class="detail-empty">Tidak ada data pemain untuk Game ${gameNum}.</div>`;
     }
 
+    // FIX: key dari game_api.php action=get adalah player_role (bukan role_name)
     const rows = players.map((p) => {
-      const k   = Number(p.kills   ?? 0);
-      const d   = Number(p.deaths  ?? 0);
-      const a   = Number(p.assists ?? 0);
-      const kda = parseFloat(p.kda ?? ((k + a) / Math.max(d, 1)).toFixed(2));
+      const k    = Number(p.kills      ?? 0);
+      const d    = Number(p.deaths     ?? 0);
+      const a    = Number(p.assists    ?? 0);
+      const kda  = parseFloat(p.kda    ?? ((k + a) / Math.max(d, 1)).toFixed(2));
       const gold = Number(p.total_gold ?? 0).toLocaleString('id-ID');
       return `
         <tr>
-          <td><strong>${p.player_name || '-'}</strong></td>
-          <td><em style="color:var(--color-text-muted);font-style:normal;font-size:10px">${p.role_name || '-'}</em></td>
-          <td>${p.hero_name || '-'}</td>
+          <td><strong>${p.player_name || '—'}</strong></td>
+          <td>${roleBadgeHtml(p.player_role)}</td>
+          <td>${p.hero_name || '—'}</td>
           <td class="${kdaClass(kda)}">${kda}</td>
           <td>${k}</td>
           <td>${d}</td>
@@ -92,7 +117,7 @@
       </table>`;
   }
 
-  // ── Toggle detail row ─────────────────────────
+  // ── Toggle detail row ────────────────────────────────────────────────
   async function toggleDetail(btn, gameId, gameNum, colSpan) {
     const existingRow = document.getElementById(`detail-row-${gameId}`);
 
@@ -134,7 +159,7 @@
     }
   }
 
-  // ── Match meta ───────────────────────────────
+  // ── Match meta ──────────────────────────────────────────────────────
   function updateMatchMeta(match) {
     const opponentName = match.opponent_name || 'Match';
 
@@ -152,21 +177,19 @@
     const addGameBtn = document.getElementById('addGameBtn');
     if (addGameBtn) addGameBtn.href = `addgame.html?match_id=${matchId}`;
 
-    // FIX: back btn dinamis berdasarkan type match
     const backBtn = document.getElementById('backBtn');
     if (backBtn) {
       const type = (match.type || '').toLowerCase();
       if (type === 'scrim' || type === 'ranked') {
         backBtn.href = 'train.html';
       } else {
-        // tournament / league → kembali ke match.html dengan filter kompetisi jika ada
         const compId = match.competition_id ? `?competition_id=${match.competition_id}` : '';
         backBtn.href = `match.html${compId}`;
       }
     }
   }
 
-  // ── Render games ────────────────────────────
+  // ── Render games ────────────────────────────────────────────────────
   function renderGames(games) {
     const tbody    = document.getElementById('gameBody');
     const countEl  = document.getElementById('gameCount');
@@ -254,7 +277,7 @@
     });
   }
 
-  // ── Delete ──────────────────────────────────
+  // ── Delete ─────────────────────────────────────────────────────────────
   function handleDelete(id, num) {
     if (!confirm(`Hapus Game ${num}? Tindakan ini tidak bisa dibatalkan.`)) return;
     fetch(`${apiBase()}game_api.php`, {
@@ -272,8 +295,7 @@
       .catch((err) => showToast(err.message || 'Gagal menghapus game.', 'error'));
   }
 
-  // ── Load match info ──────────────────────────
-  // FIX: tidak throw jika gagal — loadGames tetap jalan
+  // ── Load match info ───────────────────────────────────────────────
   function loadMatchInfo() {
     return fetch(`${apiBase()}match_api.php?action=get&id=${matchId}`)
       .then(async (res) => {
@@ -286,10 +308,9 @@
           matchData = match;
           updateMatchMeta(match);
         }
-        // Jika match null (tidak ditemukan), lanjut saja — loadGames akan tampil empty state
       })
       .catch(() => {
-        // Koneksi gagal — tetap lanjutkan loadGames, jangan hentikan alur
+        // Koneksi gagal — tetap lanjutkan loadGames
       });
   }
 
@@ -306,15 +327,10 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     matchId = getMatchIdFromUrl();
-
-    // FIX: direct URL tanpa match_id — tidak tampilkan toast error,
-    // cukup redirect ke match.html secara diam-diam
     if (matchId <= 0) {
       window.location.replace('match.html');
       return;
     }
-
-    // loadMatchInfo tidak lagi mem-block loadGames meski gagal
     loadMatchInfo().then(() => loadGames());
   });
 
