@@ -250,7 +250,6 @@
 
         current.parentElement.insertBefore(sepComp,  current);
         current.parentElement.insertBefore(linkComp, sepComp);
-        current.parentElement.insertBefore(sepMatch,  current);
         current.textContent = 'Match';
       }
     }
@@ -259,7 +258,7 @@
     const pageTitle = document.querySelector('.page-title');
     const pageSub   = document.querySelector('.page-sub');
     if (pageTitle) pageTitle.textContent = competitionName
-      ? `Match — ${competitionName}`
+      ? `${competitionName}`
       : 'Match Turnamen';
     if (pageSub) pageSub.textContent = competitionName
       ? `Daftar match untuk ${competitionName}`
