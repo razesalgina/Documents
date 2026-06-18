@@ -46,8 +46,6 @@
   }
 
   // ── Hero value helper ───────────────────────
-  // Nilai hero disimpan di <input type="hidden" id="hero_{role}">
-  // yang diisi oleh hero-picker.js saat user klik Select di popup.
   function getHeroValue(roleKey) {
     const el = document.getElementById(`hero_${roleKey}`);
     return el ? el.value.trim() : '';
@@ -57,29 +55,32 @@
   function setHeroValue(roleKey, heroName) {
     const hiddenEl  = document.getElementById(`hero_${roleKey}`);
     const previewEl = document.getElementById(`preview_hero_${roleKey}`);
-    if (hiddenEl)  hiddenEl.value   = heroName;
+    if (hiddenEl)  hiddenEl.value        = heroName;
     if (previewEl) previewEl.textContent = heroName || '—';
     // Dispatch 'change' agar updateRoleProgress terpicu
     hiddenEl?.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
   // ── Player dropdown ─────────────────────────
-  function refreshPlayerDropdown(roleKey, selectedName = '') {
+  // FIX: value = p.id (integer FK) — seragam dengan addgame.js
+  function refreshPlayerDropdown(roleKey, selectedId = null) {
     const card = document.getElementById(`card-${roleKey}`);
     if (!card) return;
-    const sel    = card.querySelector('.select-player');
+    const sel = card.querySelector('.select-player');
     if (!sel) return;
 
-    const dbRole  = ROLE_DB_MAP[roleKey] || roleKey;
+    const dbRole   = ROLE_DB_MAP[roleKey] || roleKey;
     const filtered = allPlayers.filter(
       (p) => (p.primary_role || '').toLowerCase() === dbRole.toLowerCase()
     );
     const pool = filtered.length > 0 ? filtered : allPlayers;
 
     sel.innerHTML = `<option value="" disabled>Pilih Pemain</option>` +
-      pool.map((p) => `<option value="${p.name}" ${p.name === selectedName ? 'selected' : ''}>${p.name}</option>`).join('');
+      pool.map((p) =>
+        `<option value="${p.id}" ${String(p.id) === String(selectedId) ? 'selected' : ''}>${p.name}</option>`
+      ).join('');
 
-    if (!selectedName || !pool.some((p) => p.name === selectedName)) sel.value = '';
+    if (!selectedId || !pool.some((p) => String(p.id) === String(selectedId))) sel.value = '';
   }
 
   function refreshAllPlayerDropdowns() {
@@ -97,6 +98,7 @@
       const kills   = card.querySelector('.input-kills');
       const deaths  = card.querySelector('.input-deaths');
       const assists = card.querySelector('.input-assists');
+      const kda     = card.querySelector('.input-kda');
       const gold    = card.querySelector('.input-gold');
       if (
         player?.value &&
@@ -104,6 +106,7 @@
         kills?.value.trim()   !== '' &&
         deaths?.value.trim()  !== '' &&
         assists?.value.trim() !== '' &&
+        kda?.value.trim()     !== '' &&
         gold?.value.trim()    !== ''
       ) filled++;
     });
@@ -127,7 +130,6 @@
       });
     });
 
-    // Pantau perubahan stats + hidden input hero (dikirim hero-picker.js via 'change' event)
     const container = document.getElementById('playerContainer');
     if (container) {
       container.addEventListener('change', updateRoleProgress);
@@ -166,16 +168,17 @@
     setVal('gameDurationSec', game.duration_seconds);
 
     // Fill tahap 2 per-role
+    // FIX: match menggunakan player_role (bukan role_name) — seragam dengan game.js
     ROLES.forEach(({ key }) => {
       const existing = (game.players || []).find(
-        (p) => (p.role_name || '').toLowerCase().replace(/\s/g, '') === key
+        (p) => (p.player_role || '').toLowerCase().replace(/\s/g, '') === key
       );
       if (!existing) return;
 
-      // Player dropdown
-      refreshPlayerDropdown(key, existing.player_name || '');
+      // FIX: pre-fill dropdown by player_id (integer FK)
+      refreshPlayerDropdown(key, existing.player_id || null);
 
-      // Hero hidden input + preview (via setHeroValue)
+      // Hero hidden input + preview
       setHeroValue(key, existing.hero_name || '');
 
       // Stats
@@ -185,6 +188,11 @@
       fill('.input-kills',   existing.kills);
       fill('.input-deaths',  existing.deaths);
       fill('.input-assists', existing.assists);
+      // FIX: isi input-kda — field baru yang ditambahkan di HTML
+      fill('.input-kda',     existing.kda    ?? parseFloat(
+        ((Number(existing.kills ?? 0) + Number(existing.assists ?? 0)) /
+          Math.max(Number(existing.deaths ?? 0), 1)).toFixed(2)
+      ));
       fill('.input-gold',    existing.total_gold);
     });
 
@@ -225,6 +233,7 @@
       const kills   = card.querySelector('.input-kills');
       const deaths  = card.querySelector('.input-deaths');
       const assists = card.querySelector('.input-assists');
+      const kda     = card.querySelector('.input-kda');
       const gold    = card.querySelector('.input-gold');
 
       const switchToRole = () => {
@@ -255,6 +264,10 @@
         switchToRole(); markError(assists);
         return { valid: false, message: `Assist untuk ${label} wajib diisi.` };
       }
+      if (!kda?.value.trim()) {
+        switchToRole(); markError(kda);
+        return { valid: false, message: `KDA untuk ${label} wajib diisi.` };
+      }
       if (!gold?.value.trim()) {
         switchToRole(); markError(gold);
         return { valid: false, message: `Total Gold untuk ${label} wajib diisi.` };
@@ -276,16 +289,18 @@
     };
   }
 
+  // FIX: kirim playerId (integer FK) + kda — seragam dengan addgame.js
   function getPlayerStats() {
     return ROLES.map(({ key }) => {
       const card = document.getElementById(`card-${key}`);
       return {
         roleName:   key,
-        playerName: card?.querySelector('.select-player')?.value || '',
+        playerId:   Number(card?.querySelector('.select-player')?.value) || 0,
         heroName:   getHeroValue(key),
         kills:      Number(card?.querySelector('.input-kills')?.value)   || 0,
         deaths:     Number(card?.querySelector('.input-deaths')?.value)  || 0,
         assists:    Number(card?.querySelector('.input-assists')?.value) || 0,
+        kda:        parseFloat(card?.querySelector('.input-kda')?.value) || 0,
         totalGold:  Number(card?.querySelector('.input-gold')?.value)    || 0,
       };
     });
@@ -333,10 +348,10 @@
 
   // ── Init ─────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
-    gameId  = parseInt(getParam('game_id')   || '0', 10);
-    matchId = parseInt(getParam('match_id')  || '0', 10);
+    gameId  = parseInt(getParam('game_id')  || '0', 10);
+    matchId = parseInt(getParam('match_id') || '0', 10);
 
-    if (gameId <= 0)  showToast('game_id tidak ditemukan di URL.', 'error');
+    if (gameId <= 0) showToast('game_id tidak ditemukan di URL.', 'error');
 
     attachRoleTabListeners();
 
