@@ -2,6 +2,10 @@
 (function () {
   const REDIRECT_DELAY_MS = 1500;
 
+  function apiBase() {
+    return window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
+  }
+
   function showToast(message, type) {
     if (window.Esport && typeof window.Esport.showToast === 'function') {
       window.Esport.showToast(message, type);
@@ -12,12 +16,36 @@
     return {
       formElement:   document.getElementById('editMatchForm'),
       eventGroup:    document.getElementById('eventGroup'),
+      eventLabel:    document.getElementById('eventLabel'),
+      eventSelect:   document.getElementById('eventSelect'),
       formatGroup:   document.getElementById('formatGroup'),
       opponentGroup: document.getElementById('opponentGroup'),
       datetimeGroup: document.getElementById('datetimeGroup'),
       dateGroup:     document.getElementById('dateGroup'),
       timeGroup:     document.getElementById('timeGroup'),
     };
+  }
+
+  /**
+   * Perbarui label + placeholder option pada #eventSelect
+   * sesuai tipe kompetisi yang dipilih.
+   * @param {'tournament'|'league'} type
+   */
+  function updateEventLabel(type) {
+    const { eventLabel, eventSelect } = getElements();
+    if (!eventLabel || !eventSelect) return;
+
+    const labelMap = {
+      tournament: 'Pilih Tournament',
+      league:     'Pilih League',
+    };
+    const label = labelMap[type] || 'Pilih Tournament/League';
+
+    eventLabel.textContent = label;
+    // Perbarui juga placeholder option pertama (index 0)
+    if (eventSelect.options.length > 0 && eventSelect.options[0].value === '') {
+      eventSelect.options[0].textContent = label;
+    }
   }
 
   function updateFormVisibility(type) {
@@ -46,23 +74,24 @@
     }
   }
 
-  function attachTypeListeners() {
-    const { formElement } = getElements();
-    if (!formElement) return;
-    formElement.querySelectorAll('input[name="type"]').forEach((radio) => {
-      radio.addEventListener('change', (e) => {
-        updateFormVisibility((e.target.value || '').toLowerCase());
-      });
-    });
-  }
+  /**
+   * Muat daftar kompetisi upcoming sesuai tipe yang dipilih.
+   * @param {'tournament'|'league'} filterType - tipe kompetisi yang ditampilkan
+   * @param {string|number|null} selectedId   - competition_id yang sudah tersimpan (edit mode)
+   */
+  function loadCompetitions(filterType, selectedId) {
+    const { eventSelect } = getElements();
+    if (!eventSelect) return;
 
-  function loadCompetitions(selectedId) {
-    const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
-    const select = document.getElementById('eventSelect');
-    if (!select) return;
-    select.innerHTML = '<option value="">Pilih Tournament/League</option>';
+    updateEventLabel(filterType);
+    eventSelect.innerHTML = '';
 
-    fetch(`${apiBase}competition_api.php?action=list`)
+    const placeholderOpt = document.createElement('option');
+    placeholderOpt.value       = '';
+    placeholderOpt.textContent = filterType === 'tournament' ? 'Pilih Tournament' : 'Pilih League';
+    eventSelect.appendChild(placeholderOpt);
+
+    fetch(`${apiBase()}competition_api.php?action=list`)
       .then(async (res) => {
         const json = await res.json().catch(() => null);
         if (!json || !json.ok) throw new Error('Gagal memuat kompetisi');
@@ -71,18 +100,41 @@
       .then((competitions) => {
         competitions
           .filter((c) => {
-            const t = (c.type || '').toLowerCase();
-            return t === 'tournament' || t === 'league';
+            const t = (c.type   || '').toLowerCase();
+            const s = (c.status || '').toLowerCase();
+            return t === filterType && s === 'upcoming';
           })
           .forEach((c) => {
-            const opt = document.createElement('option');
-            opt.value = c.id;
-            opt.textContent = `${c.name} (${c.type})`;
-            if (selectedId && String(c.id) === String(selectedId)) opt.selected = true;
-            select.appendChild(opt);
+            const opt       = document.createElement('option');
+            opt.value       = c.id;
+            opt.textContent = c.name;
+            if (selectedId && Number(c.id) === Number(selectedId)) opt.selected = true;
+            eventSelect.appendChild(opt);
           });
       })
       .catch((err) => showToast(err.message || 'Gagal memuat daftar kompetisi.', 'error'));
+  }
+
+  /**
+   * Pasang listener pada radio type.
+   * Setiap kali radio berubah:
+   *   1. Update visibilitas form
+   *   2. Reload daftar kompetisi (jika tournament/league)
+   *   3. Update label event
+   */
+  function attachTypeListeners() {
+    const { formElement } = getElements();
+    if (!formElement) return;
+
+    formElement.querySelectorAll('input[name="type"]').forEach((radio) => {
+      radio.addEventListener('change', (e) => {
+        const type = (e.target.value || '').toLowerCase();
+        updateFormVisibility(type);
+        if (type === 'tournament' || type === 'league') {
+          loadCompetitions(type, null);
+        }
+      });
+    });
   }
 
   function populateForm(match) {
@@ -105,7 +157,6 @@
       timeInput.value = rawTime.length >= 5 ? rawTime.substring(0, 5) : rawTime;
     }
 
-    // format kolom DB = 'format'
     const formatSelect = document.getElementById('matchFormat');
     if (formatSelect && match.format) formatSelect.value = match.format;
 
@@ -118,11 +169,12 @@
     const statusSelect = document.getElementById('matchStatus');
     if (statusSelect) statusSelect.value = match.status || 'upcoming';
 
+    // Muat kompetisi dengan filter tipe + pre-select competition_id yang tersimpan
     if ((type === 'tournament' || type === 'league') && match.competition_id) {
-      loadCompetitions(match.competition_id);
+      loadCompetitions(type, match.competition_id);
     }
 
-    const label = match.opponent_name ? `${match.opponent_name}` : 'Edit Match';
+    const label      = match.opponent_name ? match.opponent_name : 'Edit Match';
     const breadcrumb = document.getElementById('breadcrumbMatchLabel');
     const pageTitle  = document.getElementById('pageTitle');
     if (breadcrumb) breadcrumb.textContent = label;
@@ -132,7 +184,7 @@
   function validatePayload(payload) {
     if (!payload.id)   return { valid: false, message: 'ID match tidak ditemukan' };
     if (!payload.type) return { valid: false, message: 'Kategori match wajib dipilih' };
-    if ((payload.type === 'tournament' || payload.type === 'league')) {
+    if (payload.type === 'tournament' || payload.type === 'league') {
       if (!payload.opponent_name) return { valid: false, message: 'Nama lawan wajib diisi' };
       if (!payload.match_date)    return { valid: false, message: 'Tanggal match wajib diisi' };
       if (!payload.match_time)    return { valid: false, message: 'Jam match wajib diisi' };
@@ -168,11 +220,10 @@
     const validation = validatePayload(payload);
     if (!validation.valid) { showToast(validation.message, 'error'); return; }
 
-    const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
-    fetch(`${apiBase}match_api.php`, {
-      method: 'POST',
+    fetch(`${apiBase()}match_api.php`, {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+      body:    JSON.stringify(payload),
     })
       .then(async (res) => {
         const json = await res.json().catch(() => null);
@@ -199,8 +250,7 @@
 
     attachTypeListeners();
 
-    const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
-    fetch(`${apiBase}match_api.php?action=get&id=${id}`)
+    fetch(`${apiBase()}match_api.php?action=get&id=${id}`)
       .then(async (res) => {
         const json = await res.json().catch(() => null);
         if (!json || !json.ok) throw new Error('Match tidak ditemukan');
