@@ -129,9 +129,8 @@
       if (status     && (c.status || '').toLowerCase() !== status.toLowerCase())        return false;
       if (rank       && (c.final_rank || '').toLowerCase() !== rank.toLowerCase())      return false;
       if (prize) {
-        const p = Number(c.prizepool || 0);
-        if (prize === 'zero'  && p !== 0)                         return false;
-        if (prize === 'lt10'  && !(p > 0 && p < 10_000_000))      return false;
+        const p = Number(c.prizepool || 0);        
+        if (prize === 'lt10'  && !(p >= 0 && p < 10_000_000))      return false;
         if (prize === '10to50' && !(p >= 10_000_000 && p <= 50_000_000)) return false;
         if (prize === 'gt50'  && !(p > 50_000_000))               return false;
       }
@@ -221,7 +220,7 @@
       ['8th','8th'], ['16th','16th'], ['failed','Failed'],
     ]));
     right.appendChild(makeSelect(`${prefix}FilterPrize`, 'Prizepool: Semua', [
-      ['zero','0'], ['lt10','< 10 Juta'], ['10to50','10–50 Juta'], ['gt50','> 50 Juta'],
+      ['lt10','< 10 Juta'], ['10to50','10–50 Juta'], ['gt50','> 50 Juta'],
     ]));
 
     toolbar.appendChild(left);
