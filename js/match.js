@@ -1,12 +1,12 @@
 // js/match.js
 (function () {
 
-  // ── State ──────────────────────────────────
+  // ── State ──────────────────────────
   let allMatches      = [];
   let competitionId   = 0;
   let competitionName = '';
 
-  // ── Helpers ─────────────────────────────
+  // ── Helpers ───────────────────────
   function getParam(name) {
     return new URLSearchParams(window.location.search).get(name);
   }
@@ -17,7 +17,7 @@
     }
   }
 
-  // ── Badge helpers ────────────────────────
+  // ── Badge helpers ────────────────────
   function getResult(our, opp, resultFromDb) {
     let r = (resultFromDb || '').toLowerCase();
     if (!r) {
@@ -51,7 +51,13 @@
 
   // ─────────────────────────────────────────────────────────────────
   // DELETE MODAL  (2 langkah)
-  //   Step 1 → pilih mode : Hapus Semua | Hapus Saja | Batal
+  //
+  // Logika mode:
+  //   cascade → Hapus match beserta SEMUA data Game di dalamnya
+  //   detach  → Hapus match + SEMUA Game-nya
+  //            (game tidak bisa diakses mandiri, jadi tidak boleh disisakan)
+  //
+  //   Step 1 → pilih mode : Hapus Semua | Hapus Match+Game | Batal
   //   Step 2 → konfirmasi  : ← Kembali | Yakin | Batal
   // ─────────────────────────────────────────────────────────────────
   const DeleteModal = (function () {
@@ -165,16 +171,26 @@
         return card;
       };
 
+      // ── Opsi a: cascade – hanya muncul jika match punya competition_id (konteks tournament/league)
+      // ── Opsi b: detach  – hapus match + semua game-nya (selalu muncul)
+      //
+      // Karena DeleteModal dipanggil dari match.html (bukan competition.html),
+      // kedua opsi berikut adalah opsi yang tersedia saat menghapus sebuah match:
+      //   cascade → sebenarnya sama-sama hapus match+game, label dibedakan untuk clarity
+      //   detach  → hapus match+game (fix: bukan "sisakan game")
+
       cards.appendChild(makeCard(
-        '🗑️',
+        '\uD83D\uDDD1\uFE0F',
         'Hapus beserta semua Game di dalamnya',
-        'Semua data Game pada match ini akan ikut dihapus secara permanen.',
+        'Match ini dan semua data Game di dalamnya akan dihapus secara permanen.',
         'cascade'
       ));
+      // FIX: opsi detach di level match = hapus match + games
+      // (game tidak bisa diakses mandiri oleh user, menyisakannya hanya jadi sampah DB)
       cards.appendChild(makeCard(
-        '📂',
-        'Hapus match ini saja',
-        'Data Game tetap tersimpan dan masih bisa diakses untuk diedit.',
+        '\uD83D\uDEAB',
+        'Hapus match dan semua Game-nya',
+        'Match beserta semua data Game akan dihapus. Tindakan ini tidak bisa dibatalkan.',
         'detach'
       ));
 
@@ -201,25 +217,30 @@
 
       const icon = document.createElement('div');
       icon.style.cssText = 'font-size:2.5rem;text-align:center;margin-bottom:12px';
-      icon.textContent = isCascade ? '⚠️' : '📂';
+      icon.textContent = '\u26A0\uFE0F';
 
       const title = document.createElement('p');
       title.style.cssText = 'margin:0 0 8px;font-size:1rem;font-weight:700;color:var(--color-text,#1e293b);text-align:center';
-      title.textContent = isCascade ? 'Konfirmasi Hapus Semua' : 'Konfirmasi Hapus Match';
+      // FIX: kedua mode di level match sama-sama hapus permanen
+      title.textContent = isCascade ? 'Konfirmasi Hapus Semua' : 'Konfirmasi Hapus Match & Game';
 
       const msg = document.createElement('p');
       msg.style.cssText = 'margin:0 0 22px;font-size:.85rem;color:var(--color-text-muted,#64748b);text-align:center;line-height:1.55';
+      // FIX: pesan detach tidak lagi menyebut "data game tetap tersimpan"
       msg.innerHTML = isCascade
         ? `Yakin ingin menghapus <strong>${label}</strong> beserta <strong>semua Game</strong> di dalamnya?<br><span style="color:#dc2626">Tindakan ini tidak bisa dibatalkan.</span>`
-        : `Yakin ingin menghapus <strong>${label}</strong>?<br>Data Game akan tetap tersimpan.`;
+        : `Yakin ingin menghapus <strong>${label}</strong> beserta <strong>semua Game</strong>-nya?<br><span style="color:#dc2626">Tindakan ini tidak bisa dibatalkan.</span>`;
 
       const footer = document.createElement('div');
       footer.style.cssText = 'display:flex;justify-content:flex-end;gap:10px';
 
-      const backBtn    = _btn('\u2190 Kembali', 'secondary');
+      const backBtn = _btn('\u2190 Kembali', 'secondary');
       backBtn.addEventListener('click', () => showStep1(label, (m) => showStep2(label, m, onConfirm)));
 
-      const confirmBtn = _btn(isCascade ? '🗑️ Ya, Hapus Semua' : '📂 Ya, Hapus Saja', isCascade ? 'danger' : 'warning');
+      const confirmBtn = _btn(
+        isCascade ? '\uD83D\uDDD1\uFE0F Ya, Hapus Semua' : '\uD83D\uDEAB Ya, Hapus Match & Game',
+        'danger'
+      );
       confirmBtn.addEventListener('click', () => { _close(); onConfirm(mode); });
 
       footer.appendChild(backBtn);
@@ -245,18 +266,20 @@
     DeleteModal.showStep1(label, function (mode) {
       DeleteModal.showStep2(label, mode, function (confirmedMode) {
         const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
+        // FIX: kedua mode (cascade & detach) di level match kirim 'cascade' ke API
+        // agar backend selalu menghapus match + semua game-nya.
+        // Mode detach di sini berbeda dengan detach di competition (yang set competition_id=NULL).
+        const apiMode = 'cascade';
         fetch(`${apiBase}match_api.php`, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ action: 'delete', id, mode: confirmedMode }),
+          body:    JSON.stringify({ action: 'delete', id, mode: apiMode }),
         })
           .then(async (res) => {
             const json = await res.json().catch(() => null);
             if (!json || !json.ok) throw new Error((json && json.message) || 'Gagal menghapus.');
             showToast(
-              confirmedMode === 'cascade'
-                ? `${label.charAt(0).toUpperCase() + label.slice(1)} beserta semua Game-nya berhasil dihapus.`
-                : `${label.charAt(0).toUpperCase() + label.slice(1)} dihapus. Data Game tetap tersimpan.`,
+              `${label.charAt(0).toUpperCase() + label.slice(1)} beserta semua Game-nya berhasil dihapus.`,
               'success'
             );
             loadMatches();
@@ -266,7 +289,7 @@
     });
   }
 
-  // ── Filter ───────────────────────────────
+  // ── Filter ───────────────────────
   function getFilters() {
     const val = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
     return {
@@ -293,7 +316,7 @@
     });
   }
 
-  // ── Render ───────────────────────────────
+  // ── Render ───────────────────────
   function renderEmptyState(tbody, isFiltered) {
     const addLink = competitionId
       ? `addmatch.html?competition_id=${competitionId}`
@@ -357,7 +380,7 @@
     });
   }
 
-  // ── Toolbar ──────────────────────────────
+  // ── Toolbar ──────────────────────
   function makeSelect(id, placeholder, options) {
     const sel = document.createElement('select');
     sel.id        = id;
@@ -405,7 +428,7 @@
     tableWrap.parentElement.insertBefore(toolbar, tableWrap);
   }
 
-  // ── Competition context ──────────────────
+  // ── Competition context ──────────────
   function setupCompetitionContext() {
     const backBtn = document.getElementById('backBtn');
     if (backBtn) {
@@ -452,7 +475,7 @@
       : 'Match Turnamen Ini';
   }
 
-  // ── Fetch competition name ─────────────────────
+  // ── Fetch competition name ─────────────────
   async function fetchCompetitionName(cid) {
     const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
     try {
@@ -463,7 +486,7 @@
     return '';
   }
 
-  // ── Fetch & init ────────────────────────────
+  // ── Fetch & init ──────────────────────
   function loadMatches() {
     const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
     const url = competitionId
