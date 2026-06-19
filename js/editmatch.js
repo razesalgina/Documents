@@ -29,13 +29,51 @@
     };
   }
 
+  // ── Bangun URL kembali secara dinamis ─────────────────────────
+  // Membaca competition_id yang disimpan di hidden input #matchCompetitionId.
+  // Jika ada → match.html?competition_id=X
+  // Jika tidak → match.html atau train.html berdasarkan tipe
+  function buildBackUrl(type) {
+    const compIdInput = document.getElementById('matchCompetitionId');
+    const compId = compIdInput ? parseInt(compIdInput.value || '0', 10) : 0;
+    if (compId > 0) return `match.html?competition_id=${compId}`;
+    const t = (type || '').toLowerCase();
+    return (t === 'scrim' || t === 'ranked') ? 'train.html' : 'match.html';
+  }
+
+  // ── Pasang href dinamis pada semua tombol Batal/Kembali ───────
+  function setupBackButtons() {
+    const getType = () => {
+      const checked = document.querySelector('input[name="type"]:checked');
+      return checked ? checked.value : '';
+    };
+
+    const update = () => {
+      const url = buildBackUrl(getType());
+      document.querySelectorAll('[data-back-btn]').forEach((el) => {
+        if (el.tagName === 'A') {
+          el.href = url;
+        } else {
+          el.addEventListener('click', () => { window.location.href = url; }, { once: true });
+        }
+      });
+    };
+
+    // Update setiap kali radio type berubah
+    document.querySelectorAll('input[name="type"]').forEach((radio) => {
+      radio.addEventListener('change', update);
+    });
+
+    // Update awal setelah form dipopulate (dipanggil dari populateForm)
+    return update;
+  }
+
   // ── Auto-generate ranked name (sama seperti addmatch) ──
   function fetchNextRankedName(currentMatchId) {
     return fetch(`${apiBase()}match_api.php?action=list`)
       .then(async (res) => {
         const json = await res.json().catch(() => null);
         if (!json || !json.ok) return 'Ranked1';
-        // Exclude match yang sedang diedit agar nomor urut tidak bergeser
         const rankeds = (json.matches || []).filter(
           (m) =>
             (m.type || '').toLowerCase() === 'ranked' &&
@@ -46,10 +84,6 @@
       .catch(() => 'Ranked1');
   }
 
-  /**
-   * Perbarui label + placeholder option pertama pada #eventSelect.
-   * @param {'tournament'|'league'} type
-   */
   function updateEventLabel(type) {
     const { eventLabel, eventSelect } = getElements();
     const labelMap = { tournament: 'Pilih Tournament', league: 'Pilih League' };
@@ -67,7 +101,6 @@
     } = getElements();
     if (!datetimeGroup) return;
 
-    // Sembunyikan semua dulu
     [eventGroup, formatGroup, opponentGroup,
      datetimeGroup, dateGroup, timeGroup, rankedAutoLabel].forEach((el) => {
       if (el) el.classList.add('hidden');
@@ -102,11 +135,6 @@
     }
   }
 
-  /**
-   * Muat daftar kompetisi upcoming sesuai tipe yang dipilih.
-   * @param {'tournament'|'league'} filterType
-   * @param {string|number|null}   selectedId  - pre-select jika ada
-   */
   function loadCompetitions(filterType, selectedId) {
     const { eventSelect } = getElements();
     if (!eventSelect) return;
@@ -145,12 +173,6 @@
       .catch((err) => showToast(err.message || 'Gagal memuat daftar kompetisi.', 'error'));
   }
 
-  /**
-   * Pasang listener pada radio type.
-   * Setiap kali radio berubah:
-   *   1. Update visibilitas form
-   *   2. Reload daftar kompetisi (jika tournament/league) — tanpa pre-select
-   */
   function attachTypeListeners() {
     const { formElement } = getElements();
     if (!formElement) return;
@@ -166,8 +188,12 @@
     });
   }
 
-  function populateForm(match) {
+  function populateForm(match, updateBackButtons) {
     document.getElementById('matchId').value = match.id;
+
+    // ── FIX: simpan competition_id ke hidden input agar buildBackUrl bisa membacanya
+    const compIdInput = document.getElementById('matchCompetitionId');
+    if (compIdInput) compIdInput.value = match.competition_id || '';
 
     const type = (match.type || '').toLowerCase();
     const typeRadio = document.querySelector(`input[name="type"][value="${type}"]`);
@@ -195,7 +221,6 @@
     const statusSelect = document.getElementById('matchStatus');
     if (statusSelect) statusSelect.value = match.status || 'upcoming';
 
-    // Muat kompetisi dengan filter tipe + pre-select competition_id tersimpan
     if ((type === 'tournament' || type === 'league') && match.competition_id) {
       loadCompetitions(type, match.competition_id);
     }
@@ -205,17 +230,14 @@
     const pageTitle  = document.getElementById('pageTitle');
     if (breadcrumb) breadcrumb.textContent = label;
     if (pageTitle)  pageTitle.textContent  = label;
+
+    // ── FIX: update href tombol Batal/Kembali setelah data dimuat
+    if (typeof updateBackButtons === 'function') updateBackButtons();
   }
 
-  /**
-   * Bangun payload berdasarkan tipe aktif saat submit.
-   * Field yang tidak relevan untuk tipe tersebut di-null-kan
-   * agar database tidak menyimpan sisa data dari tipe sebelumnya.
-   */
   async function buildPayload(formData) {
     const type = (formData.get('type') || '').toLowerCase();
 
-    // Base payload — semua field nullable diset null dulu
     const payload = {
       action:         'update',
       id:             parseInt(formData.get('id') || '0', 10),
@@ -238,23 +260,18 @@
       payload.match_time     = formData.get('matchTime') || null;
 
     } else if (type === 'scrim') {
-      // competition_id tetap null, format & opponent diisi
       payload.format        = formData.get('matchFormat')
         ? formData.get('matchFormat').toUpperCase()
         : null;
       payload.opponent_name = (formData.get('opponentName') || '').trim() || null;
-      // match_time tidak wajib untuk scrim, tapi simpan jika diisi
       payload.match_time    = formData.get('matchTime') || null;
 
     } else if (type === 'ranked') {
-      // competition_id, format, opponent_name, match_time = null (sudah di-null di base)
-      // opponent_name diisi otomatis dengan RankedX
       const rankedAutoLabel = document.getElementById('rankedAutoLabel');
       const autoName = rankedAutoLabel?.dataset.rankedName || null;
       if (autoName) {
         payload.opponent_name = autoName;
       } else {
-        // fallback: fetch ulang jika label belum ter-render
         payload.opponent_name = await fetchNextRankedName(payload.id);
       }
     }
@@ -305,8 +322,6 @@
       })
       .then((savedMatch) => {
         showToast('Match berhasil diperbarui!', 'success');
-        // Redirect: jika match masih punya competition_id → kembali ke halaman kompetisi itu.
-        // Jika sudah di-null (ubah ke scrim/ranked) → kembali ke match.html atau train.html.
         const savedCompId = savedMatch && savedMatch.competition_id
           ? savedMatch.competition_id
           : null;
@@ -336,6 +351,9 @@
 
     attachTypeListeners();
 
+    // Setup back buttons dan simpan fungsi update-nya
+    const updateBackButtons = setupBackButtons();
+
     fetch(`${apiBase()}match_api.php?action=get&id=${id}`)
       .then(async (res) => {
         const json = await res.json().catch(() => null);
@@ -343,7 +361,7 @@
         return json.match;
       })
       .then((match) => {
-        populateForm(match);
+        populateForm(match, updateBackButtons);
         formElement.addEventListener('submit', handleSubmit);
       })
       .catch(() => { window.location.href = 'match.html'; });
