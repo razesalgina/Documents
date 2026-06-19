@@ -3,8 +3,8 @@
 
   // ── State ──────────────────────────────────
   let allMatches      = [];
-  let competitionId   = 0;   // set jika drill-down dari competition
-  let competitionName = ''; // untuk label header
+  let competitionId   = 0;
+  let competitionName = '';
 
   // ── Helpers ─────────────────────────────
   function getParam(name) {
@@ -31,14 +31,14 @@
   }
 
   function resultBadgeHtml(our, opp, resultFromDb) {
-    const r = getResult(our, opp, resultFromDb);
+    const r      = getResult(our, opp, resultFromDb);
     const cssMap = { win: 'badge badge-green', lose: 'badge badge-red', draw: 'badge badge-yellow' };
     const label  = r.charAt(0).toUpperCase() + r.slice(1);
     return `<span class="${cssMap[r] || 'badge badge-neutral'}">${label}</span>`;
   }
 
   function statusBadgeHtml(status) {
-    const s = (status || '').toLowerCase();
+    const s        = (status || '').toLowerCase();
     const cssMap   = { upcoming: 'badge badge-yellow', finished: 'badge badge-green', cancel: 'badge badge-red' };
     const labelMap = { upcoming: 'Upcoming', finished: 'Finished', cancel: 'Cancel' };
     return `<span class="${cssMap[s] || 'badge badge-neutral'}">${labelMap[s] || s || '-'}</span>`;
@@ -49,24 +49,221 @@
     return map[(type || '').toLowerCase()] || type || '-';
   }
 
-  // ── Delete ───────────────────────────────
+  // ─────────────────────────────────────────────────────────────────
+  // DELETE MODAL  (2 langkah)
+  //   Step 1 → pilih mode : Hapus Semua | Hapus Saja | Batal
+  //   Step 2 → konfirmasi  : ← Kembali | Yakin | Batal
+  // ─────────────────────────────────────────────────────────────────
+  const DeleteModal = (function () {
+    let _overlay = null;
+
+    function _ensureDOM() {
+      if (_overlay) return;
+
+      _overlay = document.createElement('div');
+      _overlay.id = 'matchDeleteModal';
+      _overlay.style.cssText = [
+        'display:none',
+        'position:fixed',
+        'inset:0',
+        'z-index:9999',
+        'background:rgba(15,23,42,.55)',
+        'backdrop-filter:blur(3px)',
+        'align-items:center',
+        'justify-content:center',
+      ].join(';');
+
+      _overlay.innerHTML = `
+        <div id="matchDeleteModalBox" style="
+          background:var(--color-surface,#fff);
+          border:1px solid var(--color-border,#e2e8f0);
+          border-radius:14px;
+          box-shadow:0 20px 48px rgba(15,23,42,.18);
+          padding:28px 28px 22px;
+          width:min(440px,92vw);
+          max-width:100%;
+          font-family:inherit;
+        ">
+          <div id="matchDeleteModalContent"></div>
+        </div>`;
+
+      _overlay.addEventListener('click', (e) => {
+        if (e.target === _overlay) _close();
+      });
+      document.body.appendChild(_overlay);
+    }
+
+    function _close() {
+      if (_overlay) {
+        _overlay.style.display = 'none';
+        document.getElementById('matchDeleteModalContent').innerHTML = '';
+      }
+    }
+
+    function _btn(label, variant) {
+      const colors = {
+        danger:    'background:#dc2626;color:#fff;border:none',
+        warning:   'background:#d97706;color:#fff;border:none',
+        secondary: 'background:var(--color-surface-offset,#f1f5f9);color:var(--color-text,#1e293b);border:1px solid var(--color-border,#e2e8f0)',
+      };
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.innerHTML = label;
+      b.style.cssText = `
+        display:inline-flex;align-items:center;gap:6px;
+        padding:9px 18px;border-radius:9px;cursor:pointer;
+        font-size:0.875rem;font-weight:600;line-height:1;
+        transition:filter .15s;
+        ${colors[variant] || colors.secondary}
+      `;
+      b.addEventListener('mouseenter', () => b.style.filter = 'brightness(.88)');
+      b.addEventListener('mouseleave', () => b.style.filter = '');
+      return b;
+    }
+
+    function showStep1(label, onMode) {
+      _ensureDOM();
+      const content = document.getElementById('matchDeleteModalContent');
+      content.innerHTML = '';
+
+      const title = document.createElement('p');
+      title.style.cssText = 'margin:0 0 6px;font-size:1.05rem;font-weight:700;color:var(--color-text,#1e293b)';
+      title.textContent = `Hapus ${label}`;
+
+      const sub = document.createElement('p');
+      sub.style.cssText = 'margin:0 0 20px;font-size:.85rem;color:var(--color-text-muted,#64748b)';
+      sub.textContent = 'Pilih cara penghapusan:';
+
+      const cards = document.createElement('div');
+      cards.style.cssText = 'display:flex;flex-direction:column;gap:10px;margin-bottom:20px';
+
+      const makeCard = (icon, heading, desc, mode) => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.style.cssText = `
+          display:flex;align-items:flex-start;gap:12px;
+          padding:13px 14px;border-radius:10px;cursor:pointer;
+          border:1.5px solid var(--color-border,#e2e8f0);
+          background:var(--color-surface,#fff);
+          text-align:left;transition:border-color .15s,background .15s;
+        `;
+        card.innerHTML = `
+          <span style="font-size:1.4rem;line-height:1">${icon}</span>
+          <span>
+            <strong style="display:block;font-size:.875rem;color:var(--color-text,#1e293b);margin-bottom:2px">${heading}</strong>
+            <span style="font-size:.78rem;color:var(--color-text-muted,#64748b);line-height:1.4">${desc}</span>
+          </span>`;
+        card.addEventListener('mouseenter', () => {
+          card.style.borderColor = 'var(--color-primary,#2563eb)';
+          card.style.background  = 'var(--color-primary-highlight,#eff6ff)';
+        });
+        card.addEventListener('mouseleave', () => {
+          card.style.borderColor = 'var(--color-border,#e2e8f0)';
+          card.style.background  = 'var(--color-surface,#fff)';
+        });
+        card.addEventListener('click', () => { _close(); onMode(mode); });
+        return card;
+      };
+
+      cards.appendChild(makeCard(
+        '🗑️',
+        'Hapus beserta semua Game di dalamnya',
+        'Semua data Game pada match ini akan ikut dihapus secara permanen.',
+        'cascade'
+      ));
+      cards.appendChild(makeCard(
+        '📂',
+        'Hapus match ini saja',
+        'Data Game tetap tersimpan dan masih bisa diakses untuk diedit.',
+        'detach'
+      ));
+
+      const footer = document.createElement('div');
+      footer.style.cssText = 'display:flex;justify-content:flex-end';
+      const cancelBtn = _btn('Batal', 'secondary');
+      cancelBtn.addEventListener('click', _close);
+      footer.appendChild(cancelBtn);
+
+      content.appendChild(title);
+      content.appendChild(sub);
+      content.appendChild(cards);
+      content.appendChild(footer);
+
+      _overlay.style.display = 'flex';
+    }
+
+    function showStep2(label, mode, onConfirm) {
+      _ensureDOM();
+      const content = document.getElementById('matchDeleteModalContent');
+      content.innerHTML = '';
+
+      const isCascade = mode === 'cascade';
+
+      const icon = document.createElement('div');
+      icon.style.cssText = 'font-size:2.5rem;text-align:center;margin-bottom:12px';
+      icon.textContent = isCascade ? '⚠️' : '📂';
+
+      const title = document.createElement('p');
+      title.style.cssText = 'margin:0 0 8px;font-size:1rem;font-weight:700;color:var(--color-text,#1e293b);text-align:center';
+      title.textContent = isCascade ? 'Konfirmasi Hapus Semua' : 'Konfirmasi Hapus Match';
+
+      const msg = document.createElement('p');
+      msg.style.cssText = 'margin:0 0 22px;font-size:.85rem;color:var(--color-text-muted,#64748b);text-align:center;line-height:1.55';
+      msg.innerHTML = isCascade
+        ? `Yakin ingin menghapus <strong>${label}</strong> beserta <strong>semua Game</strong> di dalamnya?<br><span style="color:#dc2626">Tindakan ini tidak bisa dibatalkan.</span>`
+        : `Yakin ingin menghapus <strong>${label}</strong>?<br>Data Game akan tetap tersimpan.`;
+
+      const footer = document.createElement('div');
+      footer.style.cssText = 'display:flex;justify-content:flex-end;gap:10px';
+
+      const backBtn    = _btn('\u2190 Kembali', 'secondary');
+      backBtn.addEventListener('click', () => showStep1(label, (m) => showStep2(label, m, onConfirm)));
+
+      const confirmBtn = _btn(isCascade ? '🗑️ Ya, Hapus Semua' : '📂 Ya, Hapus Saja', isCascade ? 'danger' : 'warning');
+      confirmBtn.addEventListener('click', () => { _close(); onConfirm(mode); });
+
+      footer.appendChild(backBtn);
+      footer.appendChild(confirmBtn);
+
+      content.appendChild(icon);
+      content.appendChild(title);
+      content.appendChild(msg);
+      content.appendChild(footer);
+
+      _overlay.style.display = 'flex';
+    }
+
+    return { showStep1, showStep2, close: _close };
+  })();
+
+  // ─────────────────────────────────────────────────────────────────
+  // handleDeleteMatch  – entry point dari tombol Hapus
+  // ─────────────────────────────────────────────────────────────────
   function handleDeleteMatch(id, opponentName) {
     const label = opponentName ? `match vs "${opponentName}"` : `match #${id}`;
-    if (!confirm(`Hapus ${label}? Tindakan ini tidak bisa dibatalkan.`)) return;
 
-    const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
-    fetch(`${apiBase}match_api.php`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'delete', id }),
-    })
-      .then(async (res) => {
-        const json = await res.json().catch(() => null);
-        if (!json || !json.ok) throw new Error((json && json.message) || 'Gagal menghapus.');
-        showToast(`${label.charAt(0).toUpperCase() + label.slice(1)} berhasil dihapus.`, 'success');
-        loadMatches();
-      })
-      .catch((err) => showToast(err.message || 'Gagal menghapus match.', 'error'));
+    DeleteModal.showStep1(label, function (mode) {
+      DeleteModal.showStep2(label, mode, function (confirmedMode) {
+        const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
+        fetch(`${apiBase}match_api.php`, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ action: 'delete', id, mode: confirmedMode }),
+        })
+          .then(async (res) => {
+            const json = await res.json().catch(() => null);
+            if (!json || !json.ok) throw new Error((json && json.message) || 'Gagal menghapus.');
+            showToast(
+              confirmedMode === 'cascade'
+                ? `${label.charAt(0).toUpperCase() + label.slice(1)} beserta semua Game-nya berhasil dihapus.`
+                : `${label.charAt(0).toUpperCase() + label.slice(1)} dihapus. Data Game tetap tersimpan.`,
+              'success'
+            );
+            loadMatches();
+          })
+          .catch((err) => showToast(err.message || 'Gagal menghapus match.', 'error'));
+      });
+    });
   }
 
   // ── Filter ───────────────────────────────
@@ -85,9 +282,9 @@
     const { searchText, kategori, format, status, result } = getFilters();
     return data.filter((m) => {
       if (searchText && !(m.opponent_name || '').toLowerCase().includes(searchText)) return false;
-      if (kategori   && (m.type   || '').toLowerCase()  !== kategori.toLowerCase()) return false;
-      if (format     && (m.format || '').toUpperCase()  !== format.toUpperCase())    return false;
-      if (status     && (m.status || '').toLowerCase()  !== status.toLowerCase())    return false;
+      if (kategori   && (m.type   || '').toLowerCase() !== kategori.toLowerCase()) return false;
+      if (format     && (m.format || '').toUpperCase() !== format.toUpperCase())    return false;
+      if (status     && (m.status || '').toLowerCase() !== status.toLowerCase())    return false;
       if (result) {
         const r = getResult(m.our_score, m.opponent_score, m.result);
         if (r !== result.toLowerCase()) return false;
@@ -125,7 +322,7 @@
     const tbody = document.getElementById('matchBody');
     if (!tbody) return;
 
-    const source   = competitionId
+    const source     = competitionId
       ? allMatches.filter((m) => m.competition_id == competitionId)
       : allMatches;
     const filtered   = applyFilters(source);
@@ -163,7 +360,7 @@
   // ── Toolbar ──────────────────────────────
   function makeSelect(id, placeholder, options) {
     const sel = document.createElement('select');
-    sel.id = id;
+    sel.id        = id;
     sel.className = 'form-select form-select-sm table-filter-select';
     sel.innerHTML = `<option value="">${placeholder}</option>` +
       options.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
@@ -182,10 +379,10 @@
     const right = document.createElement('div'); right.className = 'table-toolbar-right';
 
     const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.id = 'matchSearch';
-    searchInput.className = 'form-input form-input-sm table-search-input';
-    searchInput.placeholder = 'Cari nama lawan…';
+    searchInput.type        = 'text';
+    searchInput.id          = 'matchSearch';
+    searchInput.className   = 'form-input form-input-sm table-search-input';
+    searchInput.placeholder = 'Cari nama lawan\u2026';
     searchInput.addEventListener('input', renderFilteredTable);
     left.appendChild(searchInput);
 
@@ -208,43 +405,31 @@
     tableWrap.parentElement.insertBefore(toolbar, tableWrap);
   }
 
-  // ── Competition context (drill-down dari competition page) ──
-  //
-  // Mirip pola game.js:
-  //   - backBtn     → competition.html (selalu, karena match hanya datang dari competition)
-  //   - addMatchBtn → addmatch.html?competition_id=X
-  //   - Breadcrumb & judul halaman diupdate dinamis
+  // ── Competition context ──────────────────
   function setupCompetitionContext() {
-    // ── Back button ──
-    // Jika ada competition_id → kembali ke competition.html
-    // Jika tidak ada           → backBtn disembunyikan (halaman stand-alone)
     const backBtn = document.getElementById('backBtn');
     if (backBtn) {
       if (competitionId) {
         backBtn.href = 'competition.html';
       } else {
-        // Stand-alone: sembunyikan tombol Kembali
         backBtn.style.display = 'none';
       }
     }
 
-    // ── Tambah Match button ──
     const addMatchBtn = document.getElementById('addMatchBtn');
     if (addMatchBtn && competitionId) {
       addMatchBtn.href = `addmatch.html?competition_id=${competitionId}`;
     }
 
-    // Hentikan di sini jika tidak ada competition context
     if (!competitionId) return;
 
-    // ── Breadcrumb: Esport / Competition / Match ──
     const breadcrumbWrap = document.querySelector('.topbar-breadcrumb');
     if (breadcrumbWrap) {
       const current = breadcrumbWrap.querySelector('.current');
       if (current && !breadcrumbWrap.querySelector('a[href="competition.html"]')) {
         const sepComp  = document.createElement('span'); sepComp.className = 'sep'; sepComp.textContent = '/';
         const linkComp = document.createElement('a');
-        linkComp.href = 'competition.html';
+        linkComp.href        = 'competition.html';
         linkComp.textContent = 'Competition';
         const sepMatch = document.createElement('span'); sepMatch.className = 'sep'; sepMatch.textContent = '/';
 
@@ -254,17 +439,13 @@
       }
     }
 
-    // ── Page title & sub ──
     const pageTitle = document.querySelector('.page-title');
     const pageSub   = document.querySelector('.page-sub');
-    if (pageTitle) pageTitle.textContent = competitionName
-      ? `${competitionName}`
-      : 'Match Turnamen';
-    if (pageSub) pageSub.textContent = competitionName
+    if (pageTitle) pageTitle.textContent = competitionName ? `${competitionName}` : 'Match Turnamen';
+    if (pageSub)   pageSub.textContent   = competitionName
       ? `Daftar match untuk ${competitionName}`
       : 'Daftar match untuk turnamen ini';
 
-    // ── Section title ──
     const sectionTitle = document.querySelector('#matchSection .section-title');
     if (sectionTitle) sectionTitle.textContent = competitionName
       ? `Match: ${competitionName}`
