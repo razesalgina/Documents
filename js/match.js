@@ -6,6 +6,9 @@
   let competitionId   = 0;
   let competitionName = '';
 
+  // Sort state: { key: string|null, dir: 'asc'|'desc' }
+  const matchSort = { key: null, dir: 'asc' };
+
   // ── Helpers ───────────────────────
   function getParam(name) {
     return new URLSearchParams(window.location.search).get(name);
@@ -49,36 +52,103 @@
     return map[(type || '').toLowerCase()] || type || '-';
   }
 
-  // ─────────────────────────────────────────────────────────────────
-  // DELETE MODAL  (2 langkah)
-  //
-  // Logika mode:
-  //   cascade → Hapus match beserta SEMUA data Game di dalamnya
-  //   detach  → Hapus match + SEMUA Game-nya
-  //            (game tidak bisa diakses mandiri, jadi tidak boleh disisakan)
-  //
-  //   Step 1 → pilih mode : Hapus Semua | Hapus Match+Game | Batal
-  //   Step 2 → konfirmasi  : ← Kembali | Yakin | Batal
-  // ─────────────────────────────────────────────────────────────────
+  // ── Sort helpers ─────────────────────────────────────────────────
+
+  const SORT_ICON = {
+    none: `<svg class="sort-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"/></svg>`,
+    asc:  `<svg class="sort-icon sort-active" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 15l7-7 7 7"/></svg>`,
+    desc: `<svg class="sort-icon sort-active" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M19 9l-7 7-7-7"/></svg>`,
+  };
+
+  function applySorting(data, sortState) {
+    if (!sortState.key) return data;
+    const { key, dir } = sortState;
+    const mul = dir === 'asc' ? 1 : -1;
+
+    return [...data].sort((a, b) => {
+      let av, bv;
+      switch (key) {
+        case 'date':
+          av = a.match_date || '';
+          bv = b.match_date || '';
+          break;
+        case 'opponent':
+          av = (a.opponent_name || '').toLowerCase();
+          bv = (b.opponent_name || '').toLowerCase();
+          break;
+        case 'kategori':
+          av = (a.type || '').toLowerCase();
+          bv = (b.type || '').toLowerCase();
+          break;
+        case 'score':
+          av = (parseInt(a.our_score, 10) || 0) - (parseInt(a.opponent_score, 10) || 0);
+          bv = (parseInt(b.our_score, 10) || 0) - (parseInt(b.opponent_score, 10) || 0);
+          return (av - bv) * mul;
+        case 'format':
+          av = (a.format || '').toUpperCase();
+          bv = (b.format || '').toUpperCase();
+          break;
+        case 'status':
+          av = (a.status || '').toLowerCase();
+          bv = (b.status || '').toLowerCase();
+          break;
+        case 'result':
+          av = getResult(a.our_score, a.opponent_score, a.result);
+          bv = getResult(b.our_score, b.opponent_score, b.result);
+          break;
+        default:
+          return 0;
+      }
+      if (av < bv) return -1 * mul;
+      if (av > bv) return  1 * mul;
+      return 0;
+    });
+  }
+
+  function bindSortHeaders(theadId, sortState, rerender) {
+    const thead = document.getElementById(theadId);
+    if (!thead) return;
+    thead.querySelectorAll('th[data-sort-key]').forEach((th) => {
+      th.style.cursor     = 'pointer';
+      th.style.userSelect = 'none';
+      th.style.whiteSpace = 'nowrap';
+      th.addEventListener('click', () => {
+        const k = th.dataset.sortKey;
+        if (sortState.key === k) {
+          sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortState.key = k;
+          sortState.dir = 'asc';
+        }
+        rerender();
+      });
+    });
+  }
+
+  function updateSortIcons(theadId, sortState) {
+    const thead = document.getElementById(theadId);
+    if (!thead) return;
+    thead.querySelectorAll('th[data-sort-key]').forEach((th) => {
+      const iconEl = th.querySelector('.sort-icon-wrap');
+      if (!iconEl) return;
+      const isActive = sortState.key === th.dataset.sortKey;
+      iconEl.innerHTML = isActive ? SORT_ICON[sortState.dir] : SORT_ICON.none;
+    });
+  }
+
+  // ── DELETE MODAL  (2 langkah) ─────────────────────────────────────
   const DeleteModal = (function () {
     let _overlay = null;
 
     function _ensureDOM() {
       if (_overlay) return;
-
       _overlay = document.createElement('div');
       _overlay.id = 'matchDeleteModal';
       _overlay.style.cssText = [
-        'display:none',
-        'position:fixed',
-        'inset:0',
-        'z-index:9999',
-        'background:rgba(15,23,42,.55)',
-        'backdrop-filter:blur(3px)',
-        'align-items:center',
-        'justify-content:center',
+        'display:none', 'position:fixed', 'inset:0', 'z-index:9999',
+        'background:rgba(15,23,42,.55)', 'backdrop-filter:blur(3px)',
+        'align-items:center', 'justify-content:center',
       ].join(';');
-
       _overlay.innerHTML = `
         <div id="matchDeleteModalBox" style="
           background:var(--color-surface,#fff);
@@ -92,10 +162,7 @@
         ">
           <div id="matchDeleteModalContent"></div>
         </div>`;
-
-      _overlay.addEventListener('click', (e) => {
-        if (e.target === _overlay) _close();
-      });
+      _overlay.addEventListener('click', (e) => { if (e.target === _overlay) _close(); });
       document.body.appendChild(_overlay);
     }
 
@@ -115,13 +182,7 @@
       const b = document.createElement('button');
       b.type = 'button';
       b.innerHTML = label;
-      b.style.cssText = `
-        display:inline-flex;align-items:center;gap:6px;
-        padding:9px 18px;border-radius:9px;cursor:pointer;
-        font-size:0.875rem;font-weight:600;line-height:1;
-        transition:filter .15s;
-        ${colors[variant] || colors.secondary}
-      `;
+      b.style.cssText = `display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:9px;cursor:pointer;font-size:0.875rem;font-weight:600;line-height:1;transition:filter .15s;${colors[variant] || colors.secondary}`;
       b.addEventListener('mouseenter', () => b.style.filter = 'brightness(.88)');
       b.addEventListener('mouseleave', () => b.style.filter = '');
       return b;
@@ -131,80 +192,32 @@
       _ensureDOM();
       const content = document.getElementById('matchDeleteModalContent');
       content.innerHTML = '';
-
       const title = document.createElement('p');
       title.style.cssText = 'margin:0 0 6px;font-size:1.05rem;font-weight:700;color:var(--color-text,#1e293b)';
       title.textContent = `Hapus ${label}`;
-
       const sub = document.createElement('p');
       sub.style.cssText = 'margin:0 0 20px;font-size:.85rem;color:var(--color-text-muted,#64748b)';
       sub.textContent = 'Pilih cara penghapusan:';
-
       const cards = document.createElement('div');
       cards.style.cssText = 'display:flex;flex-direction:column;gap:10px;margin-bottom:20px';
-
       const makeCard = (icon, heading, desc, mode) => {
         const card = document.createElement('button');
         card.type = 'button';
-        card.style.cssText = `
-          display:flex;align-items:flex-start;gap:12px;
-          padding:13px 14px;border-radius:10px;cursor:pointer;
-          border:1.5px solid var(--color-border,#e2e8f0);
-          background:var(--color-surface,#fff);
-          text-align:left;transition:border-color .15s,background .15s;
-        `;
-        card.innerHTML = `
-          <span style="font-size:1.4rem;line-height:1">${icon}</span>
-          <span>
-            <strong style="display:block;font-size:.875rem;color:var(--color-text,#1e293b);margin-bottom:2px">${heading}</strong>
-            <span style="font-size:.78rem;color:var(--color-text-muted,#64748b);line-height:1.4">${desc}</span>
-          </span>`;
-        card.addEventListener('mouseenter', () => {
-          card.style.borderColor = 'var(--color-primary,#2563eb)';
-          card.style.background  = 'var(--color-primary-highlight,#eff6ff)';
-        });
-        card.addEventListener('mouseleave', () => {
-          card.style.borderColor = 'var(--color-border,#e2e8f0)';
-          card.style.background  = 'var(--color-surface,#fff)';
-        });
+        card.style.cssText = `display:flex;align-items:flex-start;gap:12px;padding:13px 14px;border-radius:10px;cursor:pointer;border:1.5px solid var(--color-border,#e2e8f0);background:var(--color-surface,#fff);text-align:left;transition:border-color .15s,background .15s;`;
+        card.innerHTML = `<span style="font-size:1.4rem;line-height:1">${icon}</span><span><strong style="display:block;font-size:.875rem;color:var(--color-text,#1e293b);margin-bottom:2px">${heading}</strong><span style="font-size:.78rem;color:var(--color-text-muted,#64748b);line-height:1.4">${desc}</span></span>`;
+        card.addEventListener('mouseenter', () => { card.style.borderColor = 'var(--color-primary,#2563eb)'; card.style.background = 'var(--color-primary-highlight,#eff6ff)'; });
+        card.addEventListener('mouseleave', () => { card.style.borderColor = 'var(--color-border,#e2e8f0)'; card.style.background = 'var(--color-surface,#fff)'; });
         card.addEventListener('click', () => { _close(); onMode(mode); });
         return card;
       };
-
-      // ── Opsi a: cascade – hanya muncul jika match punya competition_id (konteks tournament/league)
-      // ── Opsi b: detach  – hapus match + semua game-nya (selalu muncul)
-      //
-      // Karena DeleteModal dipanggil dari match.html (bukan competition.html),
-      // kedua opsi berikut adalah opsi yang tersedia saat menghapus sebuah match:
-      //   cascade → sebenarnya sama-sama hapus match+game, label dibedakan untuk clarity
-      //   detach  → hapus match+game (fix: bukan "sisakan game")
-
-      cards.appendChild(makeCard(
-        '\uD83D\uDDD1\uFE0F',
-        'Hapus beserta semua Game di dalamnya',
-        'Match ini dan semua data Game di dalamnya akan dihapus secara permanen.',
-        'cascade'
-      ));
-      // FIX: opsi detach di level match = hapus match + games
-      // (game tidak bisa diakses mandiri oleh user, menyisakannya hanya jadi sampah DB)
-      cards.appendChild(makeCard(
-        '\uD83D\uDEAB',
-        'Hapus match dan semua Game-nya',
-        'Match beserta semua data Game akan dihapus. Tindakan ini tidak bisa dibatalkan.',
-        'detach'
-      ));
-
+      cards.appendChild(makeCard('\uD83D\uDDD1\uFE0F', 'Hapus beserta semua Game di dalamnya', 'Match ini dan semua data Game di dalamnya akan dihapus secara permanen.', 'cascade'));
+      cards.appendChild(makeCard('\uD83D\uDEAB', 'Hapus match dan semua Game-nya', 'Match beserta semua data Game akan dihapus. Tindakan ini tidak bisa dibatalkan.', 'detach'));
       const footer = document.createElement('div');
       footer.style.cssText = 'display:flex;justify-content:flex-end';
       const cancelBtn = _btn('Batal', 'secondary');
       cancelBtn.addEventListener('click', _close);
       footer.appendChild(cancelBtn);
-
-      content.appendChild(title);
-      content.appendChild(sub);
-      content.appendChild(cards);
-      content.appendChild(footer);
-
+      content.appendChild(title); content.appendChild(sub); content.appendChild(cards); content.appendChild(footer);
       _overlay.style.display = 'flex';
     }
 
@@ -212,76 +225,46 @@
       _ensureDOM();
       const content = document.getElementById('matchDeleteModalContent');
       content.innerHTML = '';
-
       const isCascade = mode === 'cascade';
-
       const icon = document.createElement('div');
       icon.style.cssText = 'font-size:2.5rem;text-align:center;margin-bottom:12px';
       icon.textContent = '\u26A0\uFE0F';
-
       const title = document.createElement('p');
       title.style.cssText = 'margin:0 0 8px;font-size:1rem;font-weight:700;color:var(--color-text,#1e293b);text-align:center';
-      // FIX: kedua mode di level match sama-sama hapus permanen
       title.textContent = isCascade ? 'Konfirmasi Hapus Semua' : 'Konfirmasi Hapus Match & Game';
-
       const msg = document.createElement('p');
       msg.style.cssText = 'margin:0 0 22px;font-size:.85rem;color:var(--color-text-muted,#64748b);text-align:center;line-height:1.55';
-      // FIX: pesan detach tidak lagi menyebut "data game tetap tersimpan"
       msg.innerHTML = isCascade
         ? `Yakin ingin menghapus <strong>${label}</strong> beserta <strong>semua Game</strong> di dalamnya?<br><span style="color:#dc2626">Tindakan ini tidak bisa dibatalkan.</span>`
         : `Yakin ingin menghapus <strong>${label}</strong> beserta <strong>semua Game</strong>-nya?<br><span style="color:#dc2626">Tindakan ini tidak bisa dibatalkan.</span>`;
-
       const footer = document.createElement('div');
       footer.style.cssText = 'display:flex;justify-content:flex-end;gap:10px';
-
       const backBtn = _btn('\u2190 Kembali', 'secondary');
       backBtn.addEventListener('click', () => showStep1(label, (m) => showStep2(label, m, onConfirm)));
-
-      const confirmBtn = _btn(
-        isCascade ? '\uD83D\uDDD1\uFE0F Ya, Hapus Semua' : '\uD83D\uDEAB Ya, Hapus Match & Game',
-        'danger'
-      );
+      const confirmBtn = _btn(isCascade ? '\uD83D\uDDD1\uFE0F Ya, Hapus Semua' : '\uD83D\uDEAB Ya, Hapus Match & Game', 'danger');
       confirmBtn.addEventListener('click', () => { _close(); onConfirm(mode); });
-
-      footer.appendChild(backBtn);
-      footer.appendChild(confirmBtn);
-
-      content.appendChild(icon);
-      content.appendChild(title);
-      content.appendChild(msg);
-      content.appendChild(footer);
-
+      footer.appendChild(backBtn); footer.appendChild(confirmBtn);
+      content.appendChild(icon); content.appendChild(title); content.appendChild(msg); content.appendChild(footer);
       _overlay.style.display = 'flex';
     }
 
     return { showStep1, showStep2, close: _close };
   })();
 
-  // ─────────────────────────────────────────────────────────────────
-  // handleDeleteMatch  – entry point dari tombol Hapus
-  // ─────────────────────────────────────────────────────────────────
   function handleDeleteMatch(id, opponentName) {
     const label = opponentName ? `match vs "${opponentName}"` : `match #${id}`;
-
     DeleteModal.showStep1(label, function (mode) {
       DeleteModal.showStep2(label, mode, function (confirmedMode) {
         const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
-        // FIX: kedua mode (cascade & detach) di level match kirim 'cascade' ke API
-        // agar backend selalu menghapus match + semua game-nya.
-        // Mode detach di sini berbeda dengan detach di competition (yang set competition_id=NULL).
-        const apiMode = 'cascade';
         fetch(`${apiBase}match_api.php`, {
           method:  'POST',
           headers: { 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ action: 'delete', id, mode: apiMode }),
+          body:    JSON.stringify({ action: 'delete', id, mode: 'cascade' }),
         })
           .then(async (res) => {
             const json = await res.json().catch(() => null);
             if (!json || !json.ok) throw new Error((json && json.message) || 'Gagal menghapus.');
-            showToast(
-              `${label.charAt(0).toUpperCase() + label.slice(1)} beserta semua Game-nya berhasil dihapus.`,
-              'success'
-            );
+            showToast(`${label.charAt(0).toUpperCase() + label.slice(1)} beserta semua Game-nya berhasil dihapus.`, 'success');
             loadMatches();
           })
           .catch((err) => showToast(err.message || 'Gagal menghapus match.', 'error'));
@@ -289,38 +272,54 @@
     });
   }
 
-  // ── Filter ───────────────────────
+  // ── Filter helpers ────────────────────────────────────────────────
+
+  function val(id) {
+    const el = document.getElementById(id);
+    return el ? el.value : '';
+  }
+
+  /** Filter date range: true jika match_date berada di dalam [from, to] */
+  function inDateRange(m, from, to) {
+    if (!from && !to) return true;
+    const d = m.match_date || '';
+    if (!d) return false;
+    if (from && d < from) return false;
+    if (to   && d > to)   return false;
+    return true;
+  }
+
   function getFilters() {
-    const val = (id) => { const el = document.getElementById(id); return el ? el.value : ''; };
     return {
       searchText: val('matchSearch').trim().toLowerCase(),
       kategori:   val('matchFilterKategori'),
       format:     val('matchFilterFormat'),
       status:     val('matchFilterStatus'),
       result:     val('matchFilterResult'),
+      dateFrom:   val('matchDateFrom'),
+      dateTo:     val('matchDateTo'),
     };
   }
 
   function applyFilters(data) {
-    const { searchText, kategori, format, status, result } = getFilters();
+    const { searchText, kategori, format, status, result, dateFrom, dateTo } = getFilters();
     return data.filter((m) => {
       if (searchText && !(m.opponent_name || '').toLowerCase().includes(searchText)) return false;
-      if (kategori   && (m.type   || '').toLowerCase() !== kategori.toLowerCase()) return false;
-      if (format     && (m.format || '').toUpperCase() !== format.toUpperCase())    return false;
-      if (status     && (m.status || '').toLowerCase() !== status.toLowerCase())    return false;
+      if (kategori   && (m.type   || '').toLowerCase() !== kategori.toLowerCase())  return false;
+      if (format     && (m.format || '').toUpperCase() !== format.toUpperCase())     return false;
+      if (status     && (m.status || '').toLowerCase() !== status.toLowerCase())     return false;
       if (result) {
         const r = getResult(m.our_score, m.opponent_score, m.result);
         if (r !== result.toLowerCase()) return false;
       }
+      if (!inDateRange(m, dateFrom, dateTo)) return false;
       return true;
     });
   }
 
   // ── Render ───────────────────────
   function renderEmptyState(tbody, isFiltered) {
-    const addLink = competitionId
-      ? `addmatch.html?competition_id=${competitionId}`
-      : 'addmatch.html';
+    const addLink = competitionId ? `addmatch.html?competition_id=${competitionId}` : 'addmatch.html';
     tbody.innerHTML = `
       <tr><td colspan="8">
         <div class="empty-state">
@@ -349,18 +348,25 @@
       ? allMatches.filter((m) => m.competition_id == competitionId)
       : allMatches;
     const filtered   = applyFilters(source);
+    const sorted     = applySorting(filtered, matchSort);
     const isFiltered = source.length > 0 && filtered.length === 0;
 
-    if (filtered.length === 0) { renderEmptyState(tbody, isFiltered); return; }
+    updateSortIcons('matchThead', matchSort);
 
-    tbody.innerHTML = filtered.map((m, i) => {
+    if (sorted.length === 0) { renderEmptyState(tbody, isFiltered); return; }
+
+    tbody.innerHTML = sorted.map((m, i) => {
       const our = m.our_score != null ? m.our_score : 0;
       const opp = m.opponent_score != null ? m.opponent_score : 0;
       const safeOpponent = (m.opponent_name || '').replace(/"/g, '&quot;');
+      const dateDisplay  = m.match_date
+        ? new Date(m.match_date + 'T00:00:00').toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' })
+        : '-';
 
       return `
         <tr>
           <td>${i + 1}</td>
+          <td>${dateDisplay}</td>
           <td>
             <a href="game.html?match_id=${m.id}" class="link-primary">${m.opponent_name || '-'}</a>
           </td>
@@ -391,6 +397,17 @@
     return sel;
   }
 
+  function makeDateInput(id, placeholder) {
+    const input = document.createElement('input');
+    input.type        = 'date';
+    input.id          = id;
+    input.className   = 'form-input form-input-sm table-filter-date';
+    input.title       = placeholder;
+    input.style.cssText = 'width:auto;min-width:130px';
+    input.addEventListener('change', renderFilteredTable);
+    return input;
+  }
+
   function setupToolbar() {
     const tableWrap = document.getElementById('matchTableWrap');
     if (!tableWrap || document.getElementById('matchSearch')) return;
@@ -401,6 +418,7 @@
     const left  = document.createElement('div'); left.className  = 'table-toolbar-left';
     const right = document.createElement('div'); right.className = 'table-toolbar-right';
 
+    // Search input
     const searchInput = document.createElement('input');
     searchInput.type        = 'text';
     searchInput.id          = 'matchSearch';
@@ -409,6 +427,23 @@
     searchInput.addEventListener('input', renderFilteredTable);
     left.appendChild(searchInput);
 
+    // Date range
+    const dateWrap = document.createElement('div');
+    dateWrap.className  = 'date-range-wrap';
+    dateWrap.style.cssText = 'display:flex;align-items:center;gap:6px';
+    const dateLabel = document.createElement('span');
+    dateLabel.textContent = 'Tanggal:';
+    dateLabel.style.cssText = 'font-size:0.8125rem;color:var(--color-text-muted,#64748b);white-space:nowrap';
+    const dateSep = document.createElement('span');
+    dateSep.textContent = '\u2013';
+    dateSep.style.cssText = 'color:var(--color-text-muted,#64748b)';
+    dateWrap.appendChild(dateLabel);
+    dateWrap.appendChild(makeDateInput('matchDateFrom', 'Dari tanggal'));
+    dateWrap.appendChild(dateSep);
+    dateWrap.appendChild(makeDateInput('matchDateTo', 'Sampai tanggal'));
+    left.appendChild(dateWrap);
+
+    // Selects
     right.appendChild(makeSelect('matchFilterKategori', 'Kategori: Semua', [
       ['tournament','Tournament'], ['league','League'], ['scrim','Scrim'], ['ranked','Ranked'],
     ]));
@@ -428,15 +463,42 @@
     tableWrap.parentElement.insertBefore(toolbar, tableWrap);
   }
 
+  // ── Table header dengan sort ─────────────────────────────────────
+  function setupTableHeader() {
+    const table = document.querySelector('#matchTableWrap table');
+    if (!table) return;
+
+    const sortCols = [
+      { key: 'date',     label: 'Tanggal' },
+      { key: 'opponent', label: 'Nama Lawan' },
+      { key: 'kategori', label: 'Kategori' },
+      { key: 'score',    label: 'Score' },
+      { key: 'format',   label: 'Format' },
+      { key: 'status',   label: 'Status' },
+    ];
+
+    const thead = table.querySelector('thead');
+    if (!thead) return;
+    thead.id = 'matchThead';
+
+    const tr = thead.querySelector('tr');
+    if (!tr) return;
+
+    tr.innerHTML = `<th>#</th>` +
+      sortCols.map(({ key, label }) =>
+        `<th data-sort-key="${key}">${label} <span class="sort-icon-wrap">${SORT_ICON.none}</span></th>`
+      ).join('') +
+      `<th>Aksi</th>`;
+
+    bindSortHeaders('matchThead', matchSort, renderFilteredTable);
+  }
+
   // ── Competition context ──────────────
   function setupCompetitionContext() {
     const backBtn = document.getElementById('backBtn');
     if (backBtn) {
-      if (competitionId) {
-        backBtn.href = 'competition.html';
-      } else {
-        backBtn.style.display = 'none';
-      }
+      if (competitionId) { backBtn.href = 'competition.html'; }
+      else { backBtn.style.display = 'none'; }
     }
 
     const addMatchBtn = document.getElementById('addMatchBtn');
@@ -455,7 +517,6 @@
         linkComp.href        = 'competition.html';
         linkComp.textContent = 'Competition';
         const sepMatch = document.createElement('span'); sepMatch.className = 'sep'; sepMatch.textContent = '/';
-
         current.parentElement.insertBefore(sepComp,  current);
         current.parentElement.insertBefore(linkComp, sepComp);
         current.textContent = 'Match';
@@ -514,6 +575,7 @@
     }
 
     setupToolbar();
+    setupTableHeader();
     setupCompetitionContext();
     loadMatches();
   });
