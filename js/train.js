@@ -159,7 +159,7 @@
     const input = document.createElement('input');
     input.id = id;
     input.type = 'search';
-    input.className = 'toolbar-input';
+    input.className = 'form-input form-input-sm table-search-input';
     input.placeholder = placeholder;
     input.addEventListener('input', onInput);
     return input;
@@ -168,7 +168,7 @@
   function makeSelect(id, firstLabel, options, onChange) {
     const select = document.createElement('select');
     select.id = id;
-    select.className = 'toolbar-select';
+    select.className = 'form-select form-select-sm table-filter-select';
     select.innerHTML = `<option value="">${firstLabel}</option>` +
       options.map(([value, label]) => `<option value="${value}">${label}</option>`).join('');
     select.addEventListener('change', onChange);
