@@ -5,6 +5,10 @@
   let allScrims  = [];
   let allRankeds = [];
 
+  // Sort state per tabel — { key: string|null, dir: 'asc'|'desc' }
+  const scrimSort  = { key: null, dir: 'asc' };
+  const rankedSort = { key: null, dir: 'asc' };
+
   // ── Toast ────────────────────────────────────
   function showToast(message, type) {
     if (window.Esport && typeof window.Esport.showToast === 'function') {
@@ -40,8 +44,95 @@
     return `<span class="${cssMap[s] || 'badge badge-neutral'}">${labelMap[s] || s || '-'}</span>`;
   }
 
-  // ── Stats bar (Win/Lose/Draw + winrate) ──────
-  // FIX MEDIUM: Statistik Win/Lose/Draw + winrate di atas tabel
+  // ── Sort helpers ────────────────────────────
+
+  const SORT_ICON = {
+    none: `<svg class="sort-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M7 15l5 5 5-5M7 9l5-5 5 5"/></svg>`,
+    asc:  `<svg class="sort-icon sort-active" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M5 15l7-7 7 7"/></svg>`,
+    desc: `<svg class="sort-icon sort-active" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M19 9l-7 7-7-7"/></svg>`,
+  };
+
+  /**
+   * @param {any[]} data
+   * @param {{ key: string|null, dir: 'asc'|'desc' }} sortState
+   * @returns {any[]}
+   */
+  function applySorting(data, sortState) {
+    if (!sortState.key) return data;
+    const { key, dir } = sortState;
+    const mul = dir === 'asc' ? 1 : -1;
+
+    return [...data].sort((a, b) => {
+      let av, bv;
+      switch (key) {
+        case 'date':
+          av = a.match_date || '';
+          bv = b.match_date || '';
+          break;
+        case 'opponent':
+          av = (a.opponent_name || '').toLowerCase();
+          bv = (b.opponent_name || '').toLowerCase();
+          break;
+        case 'score':
+          av = (parseInt(a.our_score, 10) || 0) - (parseInt(a.opponent_score, 10) || 0);
+          bv = (parseInt(b.our_score, 10) || 0) - (parseInt(b.opponent_score, 10) || 0);
+          return (av - bv) * mul;
+        case 'result':
+          av = getResult(a.our_score, a.opponent_score, a.result);
+          bv = getResult(b.our_score, b.opponent_score, b.result);
+          break;
+        case 'format':
+          av = (a.format || '').toUpperCase();
+          bv = (b.format || '').toUpperCase();
+          break;
+        case 'status':
+          av = (a.status || '').toLowerCase();
+          bv = (b.status || '').toLowerCase();
+          break;
+        default:
+          return 0;
+      }
+      if (av < bv) return -1 * mul;
+      if (av > bv) return  1 * mul;
+      return 0;
+    });
+  }
+
+  /** Pasang event sort ke semua <th data-sort-key> dalam satu thead */
+  function bindSortHeaders(theadId, sortState, rerender) {
+    const thead = document.getElementById(theadId);
+    if (!thead) return;
+    thead.querySelectorAll('th[data-sort-key]').forEach((th) => {
+      th.style.cursor = 'pointer';
+      th.style.userSelect = 'none';
+      th.style.whiteSpace = 'nowrap';
+      th.addEventListener('click', () => {
+        const k = th.dataset.sortKey;
+        if (sortState.key === k) {
+          sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortState.key = k;
+          sortState.dir = 'asc';
+        }
+        rerender();
+      });
+    });
+  }
+
+  /** Update ikon panah di semua th sort setelah render */
+  function updateSortIcons(theadId, sortState) {
+    const thead = document.getElementById(theadId);
+    if (!thead) return;
+    thead.querySelectorAll('th[data-sort-key]').forEach((th) => {
+      const iconEl = th.querySelector('.sort-icon-wrap');
+      if (!iconEl) return;
+      const isActive = sortState.key === th.dataset.sortKey;
+      iconEl.innerHTML = isActive ? SORT_ICON[sortState.dir] : SORT_ICON.none;
+    });
+  }
+
+  // ── Stats bar ────────────────────────────────
+
   function computeStats(data) {
     const finished = data.filter((m) => (m.status || '').toLowerCase() === 'finished');
     const wins   = finished.filter((m) => getResult(m.our_score, m.opponent_score, m.result) === 'win').length;
@@ -49,36 +140,21 @@
     const draws  = finished.filter((m) => getResult(m.our_score, m.opponent_score, m.result) === 'draw').length;
     const total  = wins + losses + draws;
     const winrate = total > 0 ? Math.round((wins / total) * 100) : 0;
-    return { wins, losses, draws, total, winrate, finished: finished.length, upcoming: data.length - finished.length };
+    return { wins, losses, draws, total, winrate };
   }
 
   function renderStatsBar(containerId, stats, isFiltered) {
-    let el = document.getElementById(containerId);
+    const el = document.getElementById(containerId);
     if (!el) return;
-    if (stats.total === 0 && !isFiltered) {
-      el.innerHTML = '';
-      return;
-    }
+    if (stats.total === 0 && !isFiltered) { el.innerHTML = ''; return; }
     const barWidth = (n) => stats.total > 0 ? Math.round((n / stats.total) * 100) : 0;
     el.innerHTML = `
       <div class="stats-bar">
         <div class="stats-bar-items">
-          <div class="stats-item stats-win">
-            <span class="stats-num">${stats.wins}</span>
-            <span class="stats-label">Win</span>
-          </div>
-          <div class="stats-item stats-draw">
-            <span class="stats-num">${stats.draws}</span>
-            <span class="stats-label">Draw</span>
-          </div>
-          <div class="stats-item stats-lose">
-            <span class="stats-num">${stats.losses}</span>
-            <span class="stats-label">Lose</span>
-          </div>
-          <div class="stats-item stats-winrate">
-            <span class="stats-num">${stats.winrate}%</span>
-            <span class="stats-label">Win Rate</span>
-          </div>
+          <div class="stats-item stats-win"><span class="stats-num">${stats.wins}</span><span class="stats-label">Win</span></div>
+          <div class="stats-item stats-draw"><span class="stats-num">${stats.draws}</span><span class="stats-label">Draw</span></div>
+          <div class="stats-item stats-lose"><span class="stats-num">${stats.losses}</span><span class="stats-label">Lose</span></div>
+          <div class="stats-item stats-winrate"><span class="stats-num">${stats.winrate}%</span><span class="stats-label">Win Rate</span></div>
         </div>
         ${stats.total > 0 ? `
         <div class="stats-progress" title="Win ${stats.wins} · Draw ${stats.draws} · Lose ${stats.losses}">
@@ -89,115 +165,63 @@
       </div>`;
   }
 
-  // ── DELETE MODAL  (2-step) ───────────────────
+  // ── DELETE MODAL ───────────────────────────────
   const DeleteModal = (function () {
     let _overlay = null;
-
     function _ensureDOM() {
       if (_overlay) return;
       _overlay = document.createElement('div');
       _overlay.id = 'trainDeleteModal';
-      _overlay.style.cssText = [
-        'display:none',
-        'position:fixed',
-        'inset:0',
-        'z-index:9999',
-        'background:rgba(15,23,42,.55)',
-        'backdrop-filter:blur(3px)',
-        'align-items:center',
-        'justify-content:center',
-      ].join(';');
-      _overlay.innerHTML = `
-        <div id="trainDeleteModalBox" style="
-          background:var(--color-surface,#fff);
-          border:1px solid var(--color-border,#e2e8f0);
-          border-radius:14px;
-          box-shadow:0 20px 48px rgba(15,23,42,.18);
-          padding:28px 28px 22px;
-          width:min(440px,92vw);
-          max-width:100%;
-          font-family:inherit;
-        ">
-          <div id="trainDeleteModalContent"></div>
-        </div>`;
+      _overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);align-items:center;justify-content:center';
+      _overlay.innerHTML = `<div id="trainDeleteModalBox" style="background:var(--color-surface,#fff);border:1px solid var(--color-border,#e2e8f0);border-radius:14px;box-shadow:0 20px 48px rgba(15,23,42,.18);padding:28px 28px 22px;width:min(440px,92vw);max-width:100%;font-family:inherit"><div id="trainDeleteModalContent"></div></div>`;
       _overlay.addEventListener('click', (e) => { if (e.target === _overlay) _close(); });
       document.body.appendChild(_overlay);
     }
-
     function _close() {
-      if (_overlay) {
-        _overlay.style.display = 'none';
-        document.getElementById('trainDeleteModalContent').innerHTML = '';
-      }
+      if (_overlay) { _overlay.style.display = 'none'; document.getElementById('trainDeleteModalContent').innerHTML = ''; }
     }
-
     function _btn(label, variant) {
       const colors = {
-        danger:    'background:#dc2626;color:#fff;border:none',
+        danger: 'background:#dc2626;color:#fff;border:none',
         secondary: 'background:var(--color-surface-offset,#f1f5f9);color:var(--color-text,#1e293b);border:1px solid var(--color-border,#e2e8f0)',
       };
       const b = document.createElement('button');
-      b.type = 'button';
-      b.innerHTML = label;
-      b.style.cssText = `
-        display:inline-flex;align-items:center;gap:6px;
-        padding:9px 18px;border-radius:9px;cursor:pointer;
-        font-size:0.875rem;font-weight:600;line-height:1;
-        transition:filter .15s;
-        ${colors[variant] || colors.secondary}
-      `;
+      b.type = 'button'; b.innerHTML = label;
+      b.style.cssText = `display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:9px;cursor:pointer;font-size:0.875rem;font-weight:600;line-height:1;transition:filter .15s;${colors[variant] || colors.secondary}`;
       b.addEventListener('mouseenter', () => { b.style.filter = 'brightness(.88)'; });
       b.addEventListener('mouseleave', () => { b.style.filter = ''; });
       return b;
     }
-
     function show(label, onConfirm) {
       _ensureDOM();
       const content = document.getElementById('trainDeleteModalContent');
       content.innerHTML = '';
-
       const icon = document.createElement('div');
       icon.style.cssText = 'font-size:2.5rem;text-align:center;margin-bottom:12px';
       icon.textContent = '\u26A0\uFE0F';
-
       const title = document.createElement('p');
       title.style.cssText = 'margin:0 0 8px;font-size:1rem;font-weight:700;color:var(--color-text,#1e293b);text-align:center';
       title.textContent = 'Konfirmasi Hapus';
-
       const msg = document.createElement('p');
       msg.style.cssText = 'margin:0 0 22px;font-size:.85rem;color:var(--color-text-muted,#64748b);text-align:center;line-height:1.55';
       msg.innerHTML = `Yakin ingin menghapus <strong>${label}</strong> beserta <strong>semua Game</strong> di dalamnya?<br><span style="color:#dc2626">Tindakan ini tidak bisa dibatalkan.</span>`;
-
       const footer = document.createElement('div');
       footer.style.cssText = 'display:flex;justify-content:flex-end;gap:10px';
-
-      const cancelBtn  = _btn('Batal', 'secondary');
-      cancelBtn.addEventListener('click', _close);
-
+      const cancelBtn  = _btn('Batal', 'secondary'); cancelBtn.addEventListener('click', _close);
       const confirmBtn = _btn('\uD83D\uDDD1\uFE0F Ya, Hapus', 'danger');
       confirmBtn.addEventListener('click', () => { _close(); onConfirm(); });
-
-      footer.appendChild(cancelBtn);
-      footer.appendChild(confirmBtn);
-
-      content.appendChild(icon);
-      content.appendChild(title);
-      content.appendChild(msg);
-      content.appendChild(footer);
-
+      footer.appendChild(cancelBtn); footer.appendChild(confirmBtn);
+      content.appendChild(icon); content.appendChild(title); content.appendChild(msg); content.appendChild(footer);
       _overlay.style.display = 'flex';
     }
-
     return { show, close: _close };
   })();
 
-  // ── handleDelete ─────────────────────────────
   function handleDelete(id, label) {
     DeleteModal.show(label, function () {
       const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
       fetch(`${apiBase}match_api.php`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'delete', id, mode: 'cascade' }),
       })
         .then(async (res) => {
@@ -217,7 +241,17 @@
     return el ? el.value : '';
   }
 
-  // ── Scrim render ─────────────────────────────
+  /** Filter date range: kembalikan true jika tanggal m berada di dalam [from, to] */
+  function inDateRange(m, from, to) {
+    if (!from && !to) return true;
+    const d = m.match_date || '';
+    if (!d) return false;
+    if (from && d < from) return false;
+    if (to   && d > to)   return false;
+    return true;
+  }
+
+  // ── Scrim ────────────────────────────────────
 
   function getScrimFilters() {
     return {
@@ -225,40 +259,33 @@
       format:     val('scrimFilterFormat'),
       status:     val('scrimFilterStatus'),
       result:     val('scrimFilterResult'),
+      dateFrom:   val('scrimDateFrom'),
+      dateTo:     val('scrimDateTo'),
     };
   }
 
   function applyScrimFilters(data) {
-    const { searchText, format, status, result } = getScrimFilters();
+    const { searchText, format, status, result, dateFrom, dateTo } = getScrimFilters();
     return data.filter((m) => {
       if (searchText && !(m.opponent_name || '').toLowerCase().includes(searchText)) return false;
-      if (format     && (m.format || '').toUpperCase()  !== format.toUpperCase())    return false;
-      if (status     && (m.status || '').toLowerCase()  !== status.toLowerCase())    return false;
+      if (format     && (m.format || '').toUpperCase() !== format.toUpperCase())     return false;
+      if (status     && (m.status || '').toLowerCase() !== status.toLowerCase())     return false;
       if (result) {
         const r = getResult(m.our_score, m.opponent_score, m.result);
         if (r !== result.toLowerCase()) return false;
       }
+      if (!inDateRange(m, dateFrom, dateTo)) return false;
       return true;
     });
   }
 
   function renderScrimEmpty(tbody, isFiltered) {
-    tbody.innerHTML = `
-      <tr><td colspan="8">
-        <div class="empty-state">
-          <svg viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-          <h3>${isFiltered ? 'Tidak ada hasil' : 'Belum ada scrim'}</h3>
-          <p>${isFiltered ? 'Tidak ada scrim yang sesuai filter.' : 'Tambahkan sesi scrim untuk melacak perkembangan tim'}</p>
-          ${!isFiltered ? `
-          <a href="addmatch.html" class="btn btn-primary btn-sm">
-            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Tambah Scrim
-          </a>` : ''}
-        </div>
-      </td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <h3>${isFiltered ? 'Tidak ada hasil' : 'Belum ada scrim'}</h3>
+      <p>${isFiltered ? 'Tidak ada scrim yang sesuai filter.' : 'Tambahkan sesi scrim untuk melacak perkembangan tim'}</p>
+      ${!isFiltered ? `<a href="addmatch.html" class="btn btn-primary btn-sm"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tambah Scrim</a>` : ''}
+    </div></td></tr>`;
   }
 
   function renderScrimTable() {
@@ -266,70 +293,45 @@
     const countEl = document.getElementById('scrimCount');
     if (!tbody) return;
 
+    const filters = getScrimFilters();
+    const hasActiveFilter = Object.values(filters).some(Boolean);
     const filtered   = applyScrimFilters(allScrims);
+    const sorted     = applySorting(filtered, scrimSort);
     const isFiltered = allScrims.length > 0 && filtered.length === 0;
-    const hasActiveFilter = Object.values(getScrimFilters()).some(Boolean);
 
-    // Badge counter
     if (countEl) {
       countEl.textContent = hasActiveFilter
         ? `${filtered.length} / ${allScrims.length} match`
         : `${allScrims.length} match`;
     }
 
-    // FIX MEDIUM: Stats bar di atas tabel — hanya hitung dari data filtered
-    const statsData = hasActiveFilter ? filtered : allScrims;
-    renderStatsBar('scrimStatsBar', computeStats(statsData), hasActiveFilter);
+    renderStatsBar('scrimStatsBar', computeStats(hasActiveFilter ? filtered : allScrims), hasActiveFilter);
+    updateSortIcons('scrimThead', scrimSort);
 
-    if (filtered.length === 0) {
-      renderScrimEmpty(tbody, isFiltered);
-      return;
-    }
+    if (sorted.length === 0) { renderScrimEmpty(tbody, isFiltered); return; }
 
-    tbody.innerHTML = filtered.map((m, i) => {
+    tbody.innerHTML = sorted.map((m, i) => {
       const our = m.our_score != null ? m.our_score : 0;
       const opp = m.opponent_score != null ? m.opponent_score : 0;
       const safeName = (m.opponent_name || '').replace(/"/g, '&quot;');
-      // FIX MEDIUM: link ke games + tombol Edit eksplisit
-      return `
-        <tr>
-          <td>${i + 1}</td>
-          <td><a href="editmatch.html?id=${m.id}" class="link-primary">${m.opponent_name || '-'}</a></td>
-          <td>${our}:${opp}&nbsp;${resultBadgeHtml(our, opp, m.result)}</td>
-          <td>${m.format || '-'}</td>
-          <td>${statusBadgeHtml(m.status)}</td>
-          <td>
-            <a href="match-detail.html?id=${m.id}" class="btn btn-sm btn-outline-primary">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-                <line x1="16" y1="13" x2="8" y2="13"/>
-                <line x1="16" y1="17" x2="8" y2="17"/>
-              </svg>
-              Games
-            </a>
-          </td>
-          <td>
-            <div class="btn-action-group">
-              <a href="editmatch.html?id=${m.id}" class="btn btn-sm btn-outline" aria-label="Edit scrim ${safeName}">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-                Edit
-              </a>
-              <button class="btn btn-sm btn-danger" data-id="${m.id}" data-label="scrim vs &quot;${safeName}&quot;" aria-label="Hapus scrim ${safeName}">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                  <polyline points="3 6 5 6 21 6"/>
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                  <path d="M10 11v6M14 11v6"/>
-                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                </svg>
-                Hapus
-              </button>
-            </div>
-          </td>
-        </tr>`;
+      const dateStr  = m.match_date ? new Date(m.match_date).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-';
+      return `<tr>
+        <td>${i + 1}</td>
+        <td data-label="Tanggal">${dateStr}</td>
+        <td><a href="editmatch.html?id=${m.id}" class="link-primary">${m.opponent_name || '-'}</a></td>
+        <td>${our}:${opp}&nbsp;${resultBadgeHtml(our, opp, m.result)}</td>
+        <td>${m.format || '-'}</td>
+        <td>${statusBadgeHtml(m.status)}</td>
+        <td><a href="match-detail.html?id=${m.id}" class="btn btn-sm btn-outline-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Games</a></td>
+        <td><div class="btn-action-group">
+          <a href="editmatch.html?id=${m.id}" class="btn btn-sm btn-outline" aria-label="Edit scrim ${safeName}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</a>
+          <button class="btn btn-sm btn-danger" data-id="${m.id}" data-label="scrim vs &quot;${safeName}&quot;" aria-label="Hapus scrim ${safeName}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>Hapus</button>
+        </div></td>
+      </tr>`;
     }).join('');
 
     tbody.querySelectorAll('button[data-id]').forEach((btn) => {
@@ -337,45 +339,39 @@
     });
   }
 
-  // ── Ranked render ────────────────────────────
+  // ── Ranked ───────────────────────────────────
 
   function getRankedFilters() {
     return {
       searchText: val('rankedSearch').trim().toLowerCase(),
       status:     val('rankedFilterStatus'),
       result:     val('rankedFilterResult'),
+      dateFrom:   val('rankedDateFrom'),
+      dateTo:     val('rankedDateTo'),
     };
   }
 
   function applyRankedFilters(data) {
-    const { searchText, status, result } = getRankedFilters();
+    const { searchText, status, result, dateFrom, dateTo } = getRankedFilters();
     return data.filter((m) => {
       if (searchText && !(m.opponent_name || '').toLowerCase().includes(searchText)) return false;
-      if (status     && (m.status || '').toLowerCase() !== status.toLowerCase())    return false;
+      if (status     && (m.status || '').toLowerCase() !== status.toLowerCase())     return false;
       if (result) {
         const r = getResult(m.our_score, m.opponent_score, m.result);
         if (r !== result.toLowerCase()) return false;
       }
+      if (!inDateRange(m, dateFrom, dateTo)) return false;
       return true;
     });
   }
 
   function renderRankedEmpty(tbody, isFiltered) {
-    tbody.innerHTML = `
-      <tr><td colspan="7">
-        <div class="empty-state">
-          <svg viewBox="0 0 24 24">
-            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-          </svg>
-          <h3>${isFiltered ? 'Tidak ada hasil' : 'Belum ada ranked'}</h3>
-          <p>${isFiltered ? 'Tidak ada ranked yang sesuai filter.' : 'Catat game ranked untuk analisis performa individual'}</p>
-          ${!isFiltered ? `
-          <a href="addmatch.html" class="btn btn-primary btn-sm">
-            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Tambah Ranked
-          </a>` : ''}
-        </div>
-      </td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">
+      <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <h3>${isFiltered ? 'Tidak ada hasil' : 'Belum ada ranked'}</h3>
+      <p>${isFiltered ? 'Tidak ada ranked yang sesuai filter.' : 'Catat game ranked untuk analisis performa individual'}</p>
+      ${!isFiltered ? `<a href="addmatch.html" class="btn btn-primary btn-sm"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Tambah Ranked</a>` : ''}
+    </div></td></tr>`;
   }
 
   function renderRankedTable() {
@@ -383,69 +379,44 @@
     const countEl = document.getElementById('rankedCount');
     if (!tbody) return;
 
+    const filters = getRankedFilters();
+    const hasActiveFilter = Object.values(filters).some(Boolean);
     const filtered   = applyRankedFilters(allRankeds);
+    const sorted     = applySorting(filtered, rankedSort);
     const isFiltered = allRankeds.length > 0 && filtered.length === 0;
-    const hasActiveFilter = Object.values(getRankedFilters()).some(Boolean);
 
-    // Badge counter
     if (countEl) {
       countEl.textContent = hasActiveFilter
         ? `${filtered.length} / ${allRankeds.length} match`
         : `${allRankeds.length} match`;
     }
 
-    // FIX MEDIUM: Stats bar ranked
-    const statsData = hasActiveFilter ? filtered : allRankeds;
-    renderStatsBar('rankedStatsBar', computeStats(statsData), hasActiveFilter);
+    renderStatsBar('rankedStatsBar', computeStats(hasActiveFilter ? filtered : allRankeds), hasActiveFilter);
+    updateSortIcons('rankedThead', rankedSort);
 
-    if (filtered.length === 0) {
-      renderRankedEmpty(tbody, isFiltered);
-      return;
-    }
+    if (sorted.length === 0) { renderRankedEmpty(tbody, isFiltered); return; }
 
-    tbody.innerHTML = filtered.map((m, i) => {
+    tbody.innerHTML = sorted.map((m, i) => {
       const our = m.our_score != null ? m.our_score : 0;
       const opp = m.opponent_score != null ? m.opponent_score : 0;
       const safeLabel = (m.opponent_name || 'ranked').replace(/"/g, '&quot;');
-      // FIX MEDIUM: link ke games + tombol Edit eksplisit
-      return `
-        <tr>
-          <td>${i + 1}</td>
-          <td><a href="editmatch.html?id=${m.id}" class="link-primary">${m.opponent_name || '-'}</a></td>
-          <td>${our}:${opp}&nbsp;${resultBadgeHtml(our, opp, m.result)}</td>
-          <td>${statusBadgeHtml(m.status)}</td>
-          <td>
-            <a href="match-detail.html?id=${m.id}" class="btn btn-sm btn-outline-primary">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-                <line x1="16" y1="13" x2="8" y2="13"/>
-                <line x1="16" y1="17" x2="8" y2="17"/>
-              </svg>
-              Games
-            </a>
-          </td>
-          <td>
-            <div class="btn-action-group">
-              <a href="editmatch.html?id=${m.id}" class="btn btn-sm btn-outline" aria-label="Edit ranked ${safeLabel}">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-                Edit
-              </a>
-              <button class="btn btn-sm btn-danger" data-id="${m.id}" data-label="${safeLabel}" aria-label="Hapus ranked ${safeLabel}">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
-                  <polyline points="3 6 5 6 21 6"/>
-                  <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                  <path d="M10 11v6M14 11v6"/>
-                  <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                </svg>
-                Hapus
-              </button>
-            </div>
-          </td>
-        </tr>`;
+      const dateStr   = m.match_date ? new Date(m.match_date).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-';
+      return `<tr>
+        <td>${i + 1}</td>
+        <td data-label="Tanggal">${dateStr}</td>
+        <td><a href="editmatch.html?id=${m.id}" class="link-primary">${m.opponent_name || '-'}</a></td>
+        <td>${our}:${opp}&nbsp;${resultBadgeHtml(our, opp, m.result)}</td>
+        <td>${statusBadgeHtml(m.status)}</td>
+        <td><a href="match-detail.html?id=${m.id}" class="btn btn-sm btn-outline-primary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          Games</a></td>
+        <td><div class="btn-action-group">
+          <a href="editmatch.html?id=${m.id}" class="btn btn-sm btn-outline" aria-label="Edit ranked ${safeLabel}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</a>
+          <button class="btn btn-sm btn-danger" data-id="${m.id}" data-label="${safeLabel}" aria-label="Hapus ranked ${safeLabel}">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>Hapus</button>
+        </div></td>
+      </tr>`;
     }).join('');
 
     tbody.querySelectorAll('button[data-id]').forEach((btn) => {
@@ -465,34 +436,56 @@
     return sel;
   }
 
+  function makeDateInput(id, label, onChange) {
+    const wrap = document.createElement('div');
+    wrap.className = 'date-filter-wrap';
+    wrap.setAttribute('title', label);
+    const input = document.createElement('input');
+    input.type      = 'date';
+    input.id        = id;
+    input.className = 'form-input form-input-sm table-date-input';
+    input.setAttribute('aria-label', label);
+    input.addEventListener('change', onChange);
+    wrap.appendChild(input);
+    return wrap;
+  }
+
+  function makeDateRangeGroup(idFrom, idTo, onChange) {
+    const grp = document.createElement('div');
+    grp.className = 'date-range-group';
+    const sep = document.createElement('span');
+    sep.className = 'date-range-sep';
+    sep.textContent = '\u2013';
+    grp.appendChild(makeDateInput(idFrom, 'Dari tanggal', onChange));
+    grp.appendChild(sep);
+    grp.appendChild(makeDateInput(idTo, 'Sampai tanggal', onChange));
+    return grp;
+  }
+
   function setupScrimToolbar() {
     const tableWrap = document.getElementById('scrimTableWrap');
     if (!tableWrap || document.getElementById('scrimSearch')) return;
 
-    // FIX MEDIUM: sisipkan stats bar container sebelum table wrap
     const statsBar = document.createElement('div');
     statsBar.id = 'scrimStatsBar';
     tableWrap.parentElement.insertBefore(statsBar, tableWrap);
 
     const toolbar = document.createElement('div');
     toolbar.className = 'table-toolbar';
-
-    const left  = document.createElement('div');
-    left.className  = 'table-toolbar-left';
-    const right = document.createElement('div');
-    right.className = 'table-toolbar-right';
+    const left  = document.createElement('div'); left.className  = 'table-toolbar-left';
+    const right = document.createElement('div'); right.className = 'table-toolbar-right';
 
     const searchInput = document.createElement('input');
-    searchInput.type        = 'text';
-    searchInput.id          = 'scrimSearch';
-    searchInput.className   = 'form-input form-input-sm table-search-input';
+    searchInput.type = 'text'; searchInput.id = 'scrimSearch';
+    searchInput.className = 'form-input form-input-sm table-search-input';
     searchInput.placeholder = 'Cari nama lawan\u2026';
     searchInput.addEventListener('input', renderScrimTable);
     left.appendChild(searchInput);
 
+    // Date range
+    right.appendChild(makeDateRangeGroup('scrimDateFrom', 'scrimDateTo', renderScrimTable));
     right.appendChild(makeSelect('scrimFilterFormat', 'Format: Semua', [
-      ['BO1','BO1'], ['BO2','BO2'], ['BO3','BO3'],
-      ['BO4','BO4'], ['BO5','BO5'], ['BO7','BO7'],
+      ['BO1','BO1'], ['BO2','BO2'], ['BO3','BO3'], ['BO4','BO4'], ['BO5','BO5'], ['BO7','BO7'],
     ], renderScrimTable));
     right.appendChild(makeSelect('scrimFilterStatus', 'Status: Semua', [
       ['upcoming','Upcoming'], ['finished','Finished'], ['cancel','Cancel'],
@@ -501,36 +494,35 @@
       ['win','Win'], ['draw','Draw'], ['lose','Lose'],
     ], renderScrimTable));
 
-    toolbar.appendChild(left);
-    toolbar.appendChild(right);
+    toolbar.appendChild(left); toolbar.appendChild(right);
     tableWrap.parentElement.insertBefore(toolbar, tableWrap);
+
+    // Bind sort headers setelah HTML siap
+    bindSortHeaders('scrimThead', scrimSort, renderScrimTable);
   }
 
   function setupRankedToolbar() {
     const tableWrap = document.getElementById('rankedTableWrap');
     if (!tableWrap || document.getElementById('rankedSearch')) return;
 
-    // FIX MEDIUM: sisipkan stats bar container sebelum table wrap
     const statsBar = document.createElement('div');
     statsBar.id = 'rankedStatsBar';
     tableWrap.parentElement.insertBefore(statsBar, tableWrap);
 
     const toolbar = document.createElement('div');
     toolbar.className = 'table-toolbar';
-
-    const left  = document.createElement('div');
-    left.className  = 'table-toolbar-left';
-    const right = document.createElement('div');
-    right.className = 'table-toolbar-right';
+    const left  = document.createElement('div'); left.className  = 'table-toolbar-left';
+    const right = document.createElement('div'); right.className = 'table-toolbar-right';
 
     const searchInput = document.createElement('input');
-    searchInput.type        = 'text';
-    searchInput.id          = 'rankedSearch';
-    searchInput.className   = 'form-input form-input-sm table-search-input';
+    searchInput.type = 'text'; searchInput.id = 'rankedSearch';
+    searchInput.className = 'form-input form-input-sm table-search-input';
     searchInput.placeholder = 'Cari sesi ranked\u2026';
     searchInput.addEventListener('input', renderRankedTable);
     left.appendChild(searchInput);
 
+    // Date range
+    right.appendChild(makeDateRangeGroup('rankedDateFrom', 'rankedDateTo', renderRankedTable));
     right.appendChild(makeSelect('rankedFilterStatus', 'Status: Semua', [
       ['upcoming','Upcoming'], ['finished','Finished'], ['cancel','Cancel'],
     ], renderRankedTable));
@@ -538,9 +530,10 @@
       ['win','Win'], ['draw','Draw'], ['lose','Lose'],
     ], renderRankedTable));
 
-    toolbar.appendChild(left);
-    toolbar.appendChild(right);
+    toolbar.appendChild(left); toolbar.appendChild(right);
     tableWrap.parentElement.insertBefore(toolbar, tableWrap);
+
+    bindSortHeaders('rankedThead', rankedSort, renderRankedTable);
   }
 
   // ── Fetch & init ───────────────────────────

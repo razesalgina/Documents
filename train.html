@@ -6,7 +6,7 @@
   <title>Training — E-Sport Manager</title>
   <link rel="stylesheet" href="css/style.css">
   <style>
-    /* ── Stats Bar ────────────────────────────────────────── */
+    /* ── Stats Bar ───────────────────────────────────────── */
     .stats-bar {
       display: flex;
       flex-direction: column;
@@ -17,56 +17,55 @@
       border-radius: var(--radius-md, 8px);
       margin-bottom: 12px;
     }
-    .stats-bar-items {
-      display: flex;
-      gap: 24px;
-      flex-wrap: wrap;
-    }
-    .stats-item {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-width: 56px;
-    }
-    .stats-num {
-      font-size: 1.35rem;
-      font-weight: 700;
-      line-height: 1.1;
-    }
-    .stats-label {
-      font-size: 0.72rem;
-      font-weight: 500;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-      color: var(--color-text-muted);
-      margin-top: 2px;
-    }
+    .stats-bar-items { display: flex; gap: 24px; flex-wrap: wrap; }
+    .stats-item { display: flex; flex-direction: column; align-items: center; min-width: 56px; }
+    .stats-num  { font-size: 1.35rem; font-weight: 700; line-height: 1.1; }
+    .stats-label { font-size: 0.72rem; font-weight: 500; letter-spacing: .04em; text-transform: uppercase; color: var(--color-text-muted); margin-top: 2px; }
     .stats-win     .stats-num { color: var(--color-success, #22c55e); }
     .stats-draw    .stats-num { color: var(--color-gold,    #f59e0b); }
     .stats-lose    .stats-num { color: var(--color-error,   #ef4444); }
     .stats-winrate .stats-num { color: var(--color-primary, #3b82f6); }
-
-    /* Progress bar row */
-    .stats-progress {
-      display: flex;
-      height: 6px;
-      border-radius: 999px;
-      overflow: hidden;
-      background: var(--color-surface-offset);
-    }
+    .stats-progress { display: flex; height: 6px; border-radius: 999px; overflow: hidden; background: var(--color-surface-offset); }
     .stats-progress-win  { background: var(--color-success, #22c55e); transition: width .4s; }
     .stats-progress-draw { background: var(--color-gold,    #f59e0b); transition: width .4s; }
     .stats-progress-lose { background: var(--color-error,   #ef4444); transition: width .4s; }
 
-    /* ── Action button group ─────────────────────────────── */
-    .btn-action-group {
+    /* ── Sort icon ────────────────────────────────────── */
+    .sort-icon-wrap { display: inline-flex; margin-left: 4px; vertical-align: middle; opacity: .45; }
+    th[data-sort-key]:hover .sort-icon-wrap { opacity: .8; }
+    .sort-icon.sort-active { stroke: var(--color-primary, #3b82f6); opacity: 1 !important; }
+    th[data-sort-key]:hover { background: var(--color-surface-offset, rgba(0,0,0,.04)); }
+
+    /* ── Date filter ───────────────────────────────────── */
+    .date-range-group {
       display: flex;
-      gap: 6px;
       align-items: center;
-      flex-wrap: nowrap;
+      gap: 4px;
+    }
+    .date-range-sep {
+      color: var(--color-text-muted);
+      font-size: 0.8rem;
+      padding: 0 2px;
+    }
+    .table-date-input {
+      width: 130px;
+      padding: 0 8px;
+      height: 32px;
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-sm, 6px);
+      background: var(--color-surface);
+      color: var(--color-text);
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .table-date-input:focus {
+      outline: none;
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 2px oklch(from var(--color-primary, #3b82f6) l c h / .15);
     }
 
-    /* Outline variant untuk tombol Edit */
+    /* ── Action button group ──────────────────────────── */
+    .btn-action-group { display: flex; gap: 6px; align-items: center; flex-wrap: nowrap; }
     .btn.btn-outline {
       background: transparent;
       border: 1px solid var(--color-border);
@@ -89,7 +88,6 @@
 </head>
 <body>
   <div id="app-root">
-    <!-- Navbar inject oleh main.js -->
 
     <main class="page-content" id="pageContent">
       <div class="container">
@@ -108,7 +106,7 @@
           </a>
         </div>
 
-        <!-- ───────────── SCRIM ───────────── -->
+        <!-- SCRIM -->
         <section class="section-card" aria-labelledby="scrimHeading">
           <div class="section-card-header">
             <h2 id="scrimHeading" class="section-title">
@@ -116,30 +114,29 @@
               <span id="scrimCount" class="badge badge-neutral">0 match</span>
             </h2>
           </div>
-
-          <!-- stats-bar & toolbar diinjeksi JS di sini -->
-
+          <!-- stats-bar, toolbar diinjeksi JS -->
           <div class="table-wrap" id="scrimTableWrap">
             <table class="data-table" aria-label="Tabel Scrim">
-              <thead>
+              <thead id="scrimThead">
                 <tr>
                   <th>#</th>
-                  <th>Lawan</th>
-                  <th>Skor / Hasil</th>
-                  <th>Format</th>
-                  <th>Status</th>
+                  <th data-sort-key="date">Tanggal <span class="sort-icon-wrap"></span></th>
+                  <th data-sort-key="opponent">Lawan <span class="sort-icon-wrap"></span></th>
+                  <th data-sort-key="score">Skor / Hasil <span class="sort-icon-wrap"></span></th>
+                  <th data-sort-key="format">Format <span class="sort-icon-wrap"></span></th>
+                  <th data-sort-key="status">Status <span class="sort-icon-wrap"></span></th>
                   <th>Games</th>
                   <th>Aksi</th>
                 </tr>
               </thead>
               <tbody id="scrimBody">
-                <tr><td colspan="7" class="table-loading">Memuat data&hellip;</td></tr>
+                <tr><td colspan="8" class="table-loading">Memuat data&hellip;</td></tr>
               </tbody>
             </table>
           </div>
         </section>
 
-        <!-- ───────────── RANKED ───────────── -->
+        <!-- RANKED -->
         <section class="section-card" aria-labelledby="rankedHeading">
           <div class="section-card-header">
             <h2 id="rankedHeading" class="section-title">
@@ -147,23 +144,22 @@
               <span id="rankedCount" class="badge badge-neutral">0 match</span>
             </h2>
           </div>
-
-          <!-- stats-bar & toolbar diinjeksi JS di sini -->
-
+          <!-- stats-bar, toolbar diinjeksi JS -->
           <div class="table-wrap" id="rankedTableWrap">
             <table class="data-table" aria-label="Tabel Ranked">
-              <thead>
+              <thead id="rankedThead">
                 <tr>
                   <th>#</th>
-                  <th>Lawan / Sesi</th>
-                  <th>Skor / Hasil</th>
-                  <th>Status</th>
+                  <th data-sort-key="date">Tanggal <span class="sort-icon-wrap"></span></th>
+                  <th data-sort-key="opponent">Lawan / Sesi <span class="sort-icon-wrap"></span></th>
+                  <th data-sort-key="score">Skor / Hasil <span class="sort-icon-wrap"></span></th>
+                  <th data-sort-key="status">Status <span class="sort-icon-wrap"></span></th>
                   <th>Games</th>
                   <th>Aksi</th>
                 </tr>
               </thead>
               <tbody id="rankedBody">
-                <tr><td colspan="6" class="table-loading">Memuat data&hellip;</td></tr>
+                <tr><td colspan="7" class="table-loading">Memuat data&hellip;</td></tr>
               </tbody>
             </table>
           </div>
