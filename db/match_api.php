@@ -1,10 +1,22 @@
 <?php
 header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type');
+
+// ── OPTIONS preflight ────────────────────────────────────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
 
 require __DIR__ . '/db.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
-$action = $_GET['action'] ?? $_POST['action'] ?? '';
+
+// action: body (POST JSON) > POST form > GET query string
+$bodyData  = ($method === 'POST') ? (json_decode(file_get_contents('php://input'), true) ?? []) : [];
+$action    = $bodyData['action'] ?? $_POST['action'] ?? $_GET['action'] ?? '';
 
 // ──────────────────────────────────────────
 function determineStatus(string $date, string $time): string {
@@ -77,8 +89,7 @@ if ($method === 'GET' && $action === 'get') {
 
 // ── POST: add | update | delete ───────────────
 if ($method === 'POST') {
-    $data   = json_decode(file_get_contents('php://input'), true) ?? [];
-    $action = $data['action'] ?? $action;
+    $data = $bodyData;
 
     $validTypes    = ['tournament', 'league', 'scrim', 'ranked'];
     $validStatuses = ['upcoming', 'finished', 'cancel'];
@@ -86,9 +97,9 @@ if ($method === 'POST') {
     // ─── DELETE ──────────────────────────────────────────────────────
     /**
      * mode 'cascade' → hapus match + semua games miliknya
+     *                   response: { ok, deleted_games }
      * mode 'detach'  → lepas relasi games (games.match_id = NULL), lalu hapus match
-     *
-     * Validasi mode diperketat: hanya 'cascade' atau 'detach' yang diterima.
+     *                   response: { ok, detached_games }
      */
     if ($action === 'delete') {
         $id   = (int)($data['id']   ?? 0);
@@ -106,32 +117,52 @@ if ($method === 'POST') {
             exit;
         }
 
+        // Early exit: pastikan match exist sebelum transaksi
         try {
-            $pdo->beginTransaction();
-
-            if ($mode === 'cascade') {
-                // Hapus semua games milik match ini secara permanen
-                $pdo->prepare('DELETE FROM games WHERE match_id = :mid')
-                    ->execute([':mid' => $id]);
-            } else {
-                // Detach: lepas relasi game ↔ match, data game tetap ada
-                $pdo->prepare('UPDATE games SET match_id = NULL WHERE match_id = :mid')
-                    ->execute([':mid' => $id]);
-            }
-
-            // Hapus match
-            $stmt = $pdo->prepare('DELETE FROM matches WHERE id = :id');
-            $stmt->execute([':id' => $id]);
-
-            if ($stmt->rowCount() === 0) {
-                $pdo->rollBack();
+            $checkStmt = $pdo->prepare('SELECT id FROM matches WHERE id = :id');
+            $checkStmt->execute([':id' => $id]);
+            if (!$checkStmt->fetch()) {
                 http_response_code(404);
                 echo json_encode(['ok' => false, 'message' => 'Match tidak ditemukan']);
                 exit;
             }
+        } catch (Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['ok' => false, 'message' => 'Gagal memverifikasi match: ' . $e->getMessage()]);
+            exit;
+        }
+
+        try {
+            $pdo->beginTransaction();
+
+            $affectedGames = 0;
+
+            if ($mode === 'cascade') {
+                // Hapus semua games milik match ini secara permanen
+                $gameStmt = $pdo->prepare('DELETE FROM games WHERE match_id = :mid');
+                $gameStmt->execute([':mid' => $id]);
+                $affectedGames = $gameStmt->rowCount();
+            } else {
+                // Detach: lepas relasi game ↔ match, data game tetap ada
+                $gameStmt = $pdo->prepare('UPDATE games SET match_id = NULL WHERE match_id = :mid');
+                $gameStmt->execute([':mid' => $id]);
+                $affectedGames = $gameStmt->rowCount();
+            }
+
+            // Hapus match (existence sudah dicek di atas, tidak perlu rowCount check)
+            $pdo->prepare('DELETE FROM matches WHERE id = :id')
+                ->execute([':id' => $id]);
 
             $pdo->commit();
-            echo json_encode(['ok' => true]);
+
+            $response = ['ok' => true];
+            if ($mode === 'cascade') {
+                $response['deleted_games'] = $affectedGames;
+            } else {
+                $response['detached_games'] = $affectedGames;
+            }
+
+            echo json_encode($response);
 
         } catch (Throwable $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
@@ -144,7 +175,6 @@ if ($method === 'POST') {
     // ─── ADD ────────────────────────────────────
     if ($action === 'add') {
         $type          = strtolower(trim($data['type'] ?? ''));
-        // Jika format tidak dikirim atau kosong, gunakan default sesuai type
         $rawFormat     = strtoupper(trim($data['format'] ?? ''));
         $format        = $rawFormat !== '' ? $rawFormat : defaultFormat($type);
         $opponentName  = trim($data['opponent_name'] ?? '') ?: null;
