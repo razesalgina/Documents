@@ -58,147 +58,182 @@
    * @returns {any[]}
    */
   function applySorting(data, sortState) {
-    if (!sortState.key) return data;
-    const { key, dir } = sortState;
-    const mul = dir === 'asc' ? 1 : -1;
+    if (!sortState.key) return [...data];
+    const dir = sortState.dir === 'desc' ? -1 : 1;
+    const key = sortState.key;
+
+    const valueOf = (m) => {
+      switch (key) {
+        case 'date':     return (m.match_date || '');
+        case 'opponent': return (m.opponent_name || '').toLowerCase();
+        case 'score': {
+          const our = parseInt(m.our_score, 10) || 0;
+          const opp = parseInt(m.opponent_score, 10) || 0;
+          return our - opp;
+        }
+        case 'format':   return (m.format || '').toLowerCase();
+        case 'status':   return (m.status || '').toLowerCase();
+        default:         return '';
+      }
+    };
 
     return [...data].sort((a, b) => {
-      let av, bv;
-      switch (key) {
-        case 'date':
-          av = a.match_date || '';
-          bv = b.match_date || '';
-          break;
-        case 'opponent':
-          av = (a.opponent_name || '').toLowerCase();
-          bv = (b.opponent_name || '').toLowerCase();
-          break;
-        case 'score':
-          av = (parseInt(a.our_score, 10) || 0) - (parseInt(a.opponent_score, 10) || 0);
-          bv = (parseInt(b.our_score, 10) || 0) - (parseInt(b.opponent_score, 10) || 0);
-          return (av - bv) * mul;
-        case 'result':
-          av = getResult(a.our_score, a.opponent_score, a.result);
-          bv = getResult(b.our_score, b.opponent_score, b.result);
-          break;
-        case 'format':
-          av = (a.format || '').toUpperCase();
-          bv = (b.format || '').toUpperCase();
-          break;
-        case 'status':
-          av = (a.status || '').toLowerCase();
-          bv = (b.status || '').toLowerCase();
-          break;
-        default:
-          return 0;
-      }
-      if (av < bv) return -1 * mul;
-      if (av > bv) return  1 * mul;
+      const va = valueOf(a);
+      const vb = valueOf(b);
+      if (va < vb) return -1 * dir;
+      if (va > vb) return  1 * dir;
       return 0;
     });
   }
 
-  /** Pasang event sort ke semua <th data-sort-key> dalam satu thead */
+  function updateSortIcons(theadId, sortState) {
+    const thead = document.getElementById(theadId);
+    if (!thead) return;
+    thead.querySelectorAll('th[data-sort-key]').forEach((th) => {
+      const key  = th.dataset.sortKey;
+      const wrap = th.querySelector('.sort-icon-wrap');
+      if (!wrap) return;
+      if (sortState.key !== key) wrap.innerHTML = SORT_ICON.none;
+      else wrap.innerHTML = sortState.dir === 'asc' ? SORT_ICON.asc : SORT_ICON.desc;
+    });
+  }
+
   function bindSortHeaders(theadId, sortState, rerender) {
     const thead = document.getElementById(theadId);
     if (!thead) return;
     thead.querySelectorAll('th[data-sort-key]').forEach((th) => {
-      th.style.cursor = 'pointer';
-      th.style.userSelect = 'none';
-      th.style.whiteSpace = 'nowrap';
       th.addEventListener('click', () => {
-        const k = th.dataset.sortKey;
-        if (sortState.key === k) {
-          sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
-        } else {
-          sortState.key = k;
-          sortState.dir = 'asc';
-        }
+        const key = th.dataset.sortKey;
+        if (sortState.key === key) sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+        else { sortState.key = key; sortState.dir = 'asc'; }
         rerender();
       });
     });
   }
 
-  /** Update ikon panah di semua th sort setelah render */
-  function updateSortIcons(theadId, sortState) {
-    const thead = document.getElementById(theadId);
-    if (!thead) return;
-    thead.querySelectorAll('th[data-sort-key]').forEach((th) => {
-      const iconEl = th.querySelector('.sort-icon-wrap');
-      if (!iconEl) return;
-      const isActive = sortState.key === th.dataset.sortKey;
-      iconEl.innerHTML = isActive ? SORT_ICON[sortState.dir] : SORT_ICON.none;
+  // ── Stats helpers ───────────────────────────
+
+  function computeStats(matches) {
+    let win = 0, draw = 0, lose = 0;
+    matches.forEach((m) => {
+      const r = getResult(m.our_score, m.opponent_score, m.result);
+      if (r === 'win') win += 1;
+      else if (r === 'draw') draw += 1;
+      else lose += 1;
     });
-  }
-
-  // ── Stats bar ────────────────────────────────
-
-  function computeStats(data) {
-    const finished = data.filter((m) => (m.status || '').toLowerCase() === 'finished');
-    const wins   = finished.filter((m) => getResult(m.our_score, m.opponent_score, m.result) === 'win').length;
-    const losses = finished.filter((m) => getResult(m.our_score, m.opponent_score, m.result) === 'lose').length;
-    const draws  = finished.filter((m) => getResult(m.our_score, m.opponent_score, m.result) === 'draw').length;
-    const total  = wins + losses + draws;
-    const winrate = total > 0 ? Math.round((wins / total) * 100) : 0;
-    return { wins, losses, draws, total, winrate };
+    const total = matches.length;
+    const winRate = total ? Math.round((win / total) * 100) : 0;
+    return { total, win, draw, lose, winRate };
   }
 
   function renderStatsBar(containerId, stats, isFiltered) {
-    const el = document.getElementById(containerId);
-    if (!el) return;
-    if (stats.total === 0 && !isFiltered) { el.innerHTML = ''; return; }
-    const barWidth = (n) => stats.total > 0 ? Math.round((n / stats.total) * 100) : 0;
-    el.innerHTML = `
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const { total, win, draw, lose, winRate } = stats;
+    const winPct  = total ? (win  / total) * 100 : 0;
+    const drawPct = total ? (draw / total) * 100 : 0;
+    const losePct = total ? (lose / total) * 100 : 0;
+
+    container.innerHTML = `
       <div class="stats-bar">
         <div class="stats-bar-items">
-          <div class="stats-item stats-win"><span class="stats-num">${stats.wins}</span><span class="stats-label">Win</span></div>
-          <div class="stats-item stats-draw"><span class="stats-num">${stats.draws}</span><span class="stats-label">Draw</span></div>
-          <div class="stats-item stats-lose"><span class="stats-num">${stats.losses}</span><span class="stats-label">Lose</span></div>
-          <div class="stats-item stats-winrate"><span class="stats-num">${stats.winrate}%</span><span class="stats-label">Win Rate</span></div>
+          <div class="stats-item"><div class="stats-num">${total}</div><div class="stats-label">Match</div></div>
+          <div class="stats-item stats-win"><div class="stats-num">${win}</div><div class="stats-label">Win</div></div>
+          <div class="stats-item stats-draw"><div class="stats-num">${draw}</div><div class="stats-label">Draw</div></div>
+          <div class="stats-item stats-lose"><div class="stats-num">${lose}</div><div class="stats-label">Lose</div></div>
+          <div class="stats-item stats-winrate"><div class="stats-num">${winRate}%</div><div class="stats-label">Win Rate</div></div>
         </div>
-        ${stats.total > 0 ? `
-        <div class="stats-progress" title="Win ${stats.wins} · Draw ${stats.draws} · Lose ${stats.losses}">
-          <div class="stats-progress-win"  style="width:${barWidth(stats.wins)}%"></div>
-          <div class="stats-progress-draw" style="width:${barWidth(stats.draws)}%"></div>
-          <div class="stats-progress-lose" style="width:${barWidth(stats.losses)}%"></div>
-        </div>` : ''}
+        <div class="stats-progress" aria-hidden="true">
+          <div class="stats-progress-win" style="width:${winPct}%"></div>
+          <div class="stats-progress-draw" style="width:${drawPct}%"></div>
+          <div class="stats-progress-lose" style="width:${losePct}%"></div>
+        </div>
+        ${isFiltered ? '<div class="page-subtitle">Statistik mengikuti hasil filter aktif.</div>' : ''}
       </div>`;
   }
 
-  // ── DELETE MODAL ───────────────────────────────
+  // ── Small DOM helpers ───────────────────────
+
+  function makeInput(id, placeholder, onInput) {
+    const input = document.createElement('input');
+    input.id = id;
+    input.type = 'search';
+    input.className = 'toolbar-input';
+    input.placeholder = placeholder;
+    input.addEventListener('input', onInput);
+    return input;
+  }
+
+  function makeSelect(id, firstLabel, options, onChange) {
+    const select = document.createElement('select');
+    select.id = id;
+    select.className = 'toolbar-select';
+    select.innerHTML = `<option value="">${firstLabel}</option>` +
+      options.map(([value, label]) => `<option value="${value}">${label}</option>`).join('');
+    select.addEventListener('change', onChange);
+    return select;
+  }
+
+  function makeDateRangeGroup(fromId, toId, onChange) {
+    const wrap = document.createElement('div');
+    wrap.className = 'date-range-group';
+
+    const from = document.createElement('input');
+    from.type = 'date';
+    from.id = fromId;
+    from.className = 'table-date-input';
+    from.addEventListener('change', onChange);
+
+    const sep = document.createElement('span');
+    sep.className = 'date-range-sep';
+    sep.textContent = '—';
+
+    const to = document.createElement('input');
+    to.type = 'date';
+    to.id = toId;
+    to.className = 'table-date-input';
+    to.addEventListener('change', onChange);
+
+    wrap.appendChild(from);
+    wrap.appendChild(sep);
+    wrap.appendChild(to);
+    return wrap;
+  }
+
+  // ── Delete Modal ────────────────────────────
+
   const DeleteModal = (function () {
-    let _overlay = null;
-    function _ensureDOM() {
+    let _overlay, _content;
+    function _ensure() {
       if (_overlay) return;
       _overlay = document.createElement('div');
-      _overlay.id = 'trainDeleteModal';
-      _overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);backdrop-filter:blur(3px);align-items:center;justify-content:center';
-      _overlay.innerHTML = `<div id="trainDeleteModalBox" style="background:var(--color-surface,#fff);border:1px solid var(--color-border,#e2e8f0);border-radius:14px;box-shadow:0 20px 48px rgba(15,23,42,.18);padding:28px 28px 22px;width:min(440px,92vw);max-width:100%;font-family:inherit"><div id="trainDeleteModalContent"></div></div>`;
-      _overlay.addEventListener('click', (e) => { if (e.target === _overlay) _close(); });
+      _overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1200;padding:20px';
+      _content = document.createElement('div');
+      _content.style.cssText = 'width:min(100%,420px);background:var(--color-surface,#fff);border:1px solid var(--color-border,#e2e8f0);border-radius:18px;box-shadow:0 20px 45px rgba(0,0,0,.35);padding:26px';
+      _overlay.appendChild(_content);
+      _overlay.addEventListener('click', function (e) { if (e.target === _overlay) _close(); });
       document.body.appendChild(_overlay);
     }
-    function _close() {
-      if (_overlay) { _overlay.style.display = 'none'; document.getElementById('trainDeleteModalContent').innerHTML = ''; }
-    }
+    function _close() { if (_overlay) _overlay.style.display = 'none'; }
     function _btn(label, variant) {
-      const colors = {
-        danger: 'background:#dc2626;color:#fff;border:none',
-        secondary: 'background:var(--color-surface-offset,#f1f5f9);color:var(--color-text,#1e293b);border:1px solid var(--color-border,#e2e8f0)',
-      };
       const b = document.createElement('button');
-      b.type = 'button'; b.innerHTML = label;
-      b.style.cssText = `display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:9px;cursor:pointer;font-size:0.875rem;font-weight:600;line-height:1;transition:filter .15s;${colors[variant] || colors.secondary}`;
-      b.addEventListener('mouseenter', () => { b.style.filter = 'brightness(.88)'; });
-      b.addEventListener('mouseleave', () => { b.style.filter = ''; });
+      b.type = 'button';
+      b.textContent = label;
+      const common = 'display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 16px;border-radius:12px;font-weight:600;border:1px solid transparent;cursor:pointer';
+      const styles = {
+        secondary: 'background:var(--color-surface-offset,#f1f5f9);color:var(--color-text,#0f172a);border-color:var(--color-border,#e2e8f0)',
+        danger:    'background:#dc2626;color:#fff;border-color:#dc2626',
+      };
+      b.style.cssText = `${common};${styles[variant] || styles.secondary}`;
       return b;
     }
     function show(label, onConfirm) {
-      _ensureDOM();
-      const content = document.getElementById('trainDeleteModalContent');
-      content.innerHTML = '';
+      _ensure();
+      _content.innerHTML = '';
       const icon = document.createElement('div');
-      icon.style.cssText = 'font-size:2.5rem;text-align:center;margin-bottom:12px';
-      icon.textContent = '\u26A0\uFE0F';
+      icon.style.cssText = 'width:54px;height:54px;margin:0 auto 16px;border-radius:999px;background:rgba(220,38,38,.12);display:flex;align-items:center;justify-content:center;font-size:1.35rem;color:#dc2626';
+      icon.textContent = '⚠️';
       const title = document.createElement('p');
       title.style.cssText = 'margin:0 0 8px;font-size:1rem;font-weight:700;color:var(--color-text,#1e293b);text-align:center';
       title.textContent = 'Konfirmasi Hapus';
@@ -208,10 +243,10 @@
       const footer = document.createElement('div');
       footer.style.cssText = 'display:flex;justify-content:flex-end;gap:10px';
       const cancelBtn  = _btn('Batal', 'secondary'); cancelBtn.addEventListener('click', _close);
-      const confirmBtn = _btn('\uD83D\uDDD1\uFE0F Ya, Hapus', 'danger');
+      const confirmBtn = _btn('🗑️ Ya, Hapus', 'danger');
       confirmBtn.addEventListener('click', () => { _close(); onConfirm(); });
       footer.appendChild(cancelBtn); footer.appendChild(confirmBtn);
-      content.appendChild(icon); content.appendChild(title); content.appendChild(msg); content.appendChild(footer);
+      _content.appendChild(icon); _content.appendChild(title); _content.appendChild(msg); _content.appendChild(footer);
       _overlay.style.display = 'flex';
     }
     return { show, close: _close };
@@ -241,7 +276,6 @@
     return el ? el.value : '';
   }
 
-  /** Filter date range: kembalikan true jika tanggal m berada di dalam [from, to] */
   function inDateRange(m, from, to) {
     if (!from && !to) return true;
     const d = m.match_date || '';
@@ -399,8 +433,8 @@
     tbody.innerHTML = sorted.map((m, i) => {
       const our = m.our_score != null ? m.our_score : 0;
       const opp = m.opponent_score != null ? m.opponent_score : 0;
-      const safeLabel = (m.opponent_name || 'ranked').replace(/"/g, '&quot;');
-      const dateStr   = m.match_date ? new Date(m.match_date).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-';
+      const safeName = (m.opponent_name || '').replace(/"/g, '&quot;');
+      const dateStr  = m.match_date ? new Date(m.match_date).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' }) : '-';
       return `<tr>
         <td>${i + 1}</td>
         <td data-label="Tanggal">${dateStr}</td>
@@ -411,9 +445,9 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           Games</a></td>
         <td><div class="btn-action-group">
-          <a href="editmatch.html?id=${m.id}" class="btn btn-sm btn-outline" aria-label="Edit ranked ${safeLabel}">
+          <a href="editmatch.html?id=${m.id}" class="btn btn-sm btn-outline" aria-label="Edit ranked ${safeName}">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Edit</a>
-          <button class="btn btn-sm btn-danger" data-id="${m.id}" data-label="${safeLabel}" aria-label="Hapus ranked ${safeLabel}">
+          <button class="btn btn-sm btn-danger" data-id="${m.id}" data-label="ranked vs &quot;${safeName}&quot;" aria-label="Hapus ranked ${safeName}">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>Hapus</button>
         </div></td>
       </tr>`;
@@ -424,68 +458,28 @@
     });
   }
 
-  // ── Toolbar factory ───────────────────────────
-
-  function makeSelect(id, placeholder, options, onChange) {
-    const sel = document.createElement('select');
-    sel.id = id;
-    sel.className = 'form-select form-select-sm table-filter-select';
-    sel.innerHTML = `<option value="">${placeholder}</option>` +
-      options.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
-    sel.addEventListener('change', onChange);
-    return sel;
-  }
-
-  function makeDateInput(id, label, onChange) {
-    const wrap = document.createElement('div');
-    wrap.className = 'date-filter-wrap';
-    wrap.setAttribute('title', label);
-    const input = document.createElement('input');
-    input.type      = 'date';
-    input.id        = id;
-    input.className = 'form-input form-input-sm table-date-input';
-    input.setAttribute('aria-label', label);
-    input.addEventListener('change', onChange);
-    wrap.appendChild(input);
-    return wrap;
-  }
-
-  function makeDateRangeGroup(idFrom, idTo, onChange) {
-    const grp = document.createElement('div');
-    grp.className = 'date-range-group';
-    const sep = document.createElement('span');
-    sep.className = 'date-range-sep';
-    sep.textContent = '\u2013';
-    grp.appendChild(makeDateInput(idFrom, 'Dari tanggal', onChange));
-    grp.appendChild(sep);
-    grp.appendChild(makeDateInput(idTo, 'Sampai tanggal', onChange));
-    return grp;
-  }
+  // ── Toolbar setup ───────────────────────────
 
   function setupScrimToolbar() {
     const tableWrap = document.getElementById('scrimTableWrap');
-    if (!tableWrap || document.getElementById('scrimSearch')) return;
+    if (!tableWrap || tableWrap.dataset.toolbarReady === '1') return;
+    tableWrap.dataset.toolbarReady = '1';
 
-    const statsBar = document.createElement('div');
-    statsBar.id = 'scrimStatsBar';
-    tableWrap.parentElement.insertBefore(statsBar, tableWrap);
+    const statsHolder = document.createElement('div');
+    statsHolder.id = 'scrimStatsBar';
 
     const toolbar = document.createElement('div');
     toolbar.className = 'table-toolbar';
-    const left  = document.createElement('div'); left.className  = 'table-toolbar-left';
-    const right = document.createElement('div'); right.className = 'table-toolbar-right';
 
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text'; searchInput.id = 'scrimSearch';
-    searchInput.className = 'form-input form-input-sm table-search-input';
-    searchInput.placeholder = 'Cari nama lawan\u2026';
-    searchInput.addEventListener('input', renderScrimTable);
-    left.appendChild(searchInput);
+    const left = document.createElement('div');
+    left.className = 'table-toolbar-left';
+    left.appendChild(makeInput('scrimSearch', 'Cari lawan scrim…', renderScrimTable));
 
-    // Date range
+    const right = document.createElement('div');
+    right.className = 'table-toolbar-right';
     right.appendChild(makeDateRangeGroup('scrimDateFrom', 'scrimDateTo', renderScrimTable));
     right.appendChild(makeSelect('scrimFilterFormat', 'Format: Semua', [
-      ['BO1','BO1'], ['BO2','BO2'], ['BO3','BO3'], ['BO4','BO4'], ['BO5','BO5'], ['BO7','BO7'],
+      ['BO1','BO1'], ['BO2','BO2'], ['BO3','BO3'], ['BO5','BO5'],
     ], renderScrimTable));
     right.appendChild(makeSelect('scrimFilterStatus', 'Status: Semua', [
       ['upcoming','Upcoming'], ['finished','Finished'], ['cancel','Cancel'],
@@ -494,34 +488,32 @@
       ['win','Win'], ['draw','Draw'], ['lose','Lose'],
     ], renderScrimTable));
 
-    toolbar.appendChild(left); toolbar.appendChild(right);
+    toolbar.appendChild(left);
+    toolbar.appendChild(right);
+
+    tableWrap.parentElement.insertBefore(statsHolder, tableWrap);
     tableWrap.parentElement.insertBefore(toolbar, tableWrap);
 
-    // Bind sort headers setelah HTML siap
     bindSortHeaders('scrimThead', scrimSort, renderScrimTable);
   }
 
   function setupRankedToolbar() {
     const tableWrap = document.getElementById('rankedTableWrap');
-    if (!tableWrap || document.getElementById('rankedSearch')) return;
+    if (!tableWrap || tableWrap.dataset.toolbarReady === '1') return;
+    tableWrap.dataset.toolbarReady = '1';
 
-    const statsBar = document.createElement('div');
-    statsBar.id = 'rankedStatsBar';
-    tableWrap.parentElement.insertBefore(statsBar, tableWrap);
+    const statsHolder = document.createElement('div');
+    statsHolder.id = 'rankedStatsBar';
 
     const toolbar = document.createElement('div');
     toolbar.className = 'table-toolbar';
-    const left  = document.createElement('div'); left.className  = 'table-toolbar-left';
-    const right = document.createElement('div'); right.className = 'table-toolbar-right';
 
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text'; searchInput.id = 'rankedSearch';
-    searchInput.className = 'form-input form-input-sm table-search-input';
-    searchInput.placeholder = 'Cari sesi ranked\u2026';
-    searchInput.addEventListener('input', renderRankedTable);
-    left.appendChild(searchInput);
+    const left = document.createElement('div');
+    left.className = 'table-toolbar-left';
+    left.appendChild(makeInput('rankedSearch', 'Cari lawan / sesi ranked…', renderRankedTable));
 
-    // Date range
+    const right = document.createElement('div');
+    right.className = 'table-toolbar-right';
     right.appendChild(makeDateRangeGroup('rankedDateFrom', 'rankedDateTo', renderRankedTable));
     right.appendChild(makeSelect('rankedFilterStatus', 'Status: Semua', [
       ['upcoming','Upcoming'], ['finished','Finished'], ['cancel','Cancel'],
@@ -530,7 +522,9 @@
       ['win','Win'], ['draw','Draw'], ['lose','Lose'],
     ], renderRankedTable));
 
-    toolbar.appendChild(left); toolbar.appendChild(right);
+    toolbar.appendChild(left);
+    toolbar.appendChild(right);
+    tableWrap.parentElement.insertBefore(statsHolder, tableWrap);
     tableWrap.parentElement.insertBefore(toolbar, tableWrap);
 
     bindSortHeaders('rankedThead', rankedSort, renderRankedTable);
@@ -559,6 +553,11 @@
     setupScrimToolbar();
     setupRankedToolbar();
     loadTrainData();
+
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', loadTrainData);
+    }
   });
 
 })();
