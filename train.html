@@ -109,7 +109,7 @@
       <div class="page-header">
         <div>
           <h1 class="page-title">Train</h1>
-          <p class="page-sub">Riwayat latihan — scrim &amp; ranked</p>
+          <p class="page-sub">Riwayat latihan &mdash; scrim &amp; ranked</p>
         </div>
         <a href="addmatch.html" class="btn btn-primary">
           <svg viewBox="0 0 24 24">
@@ -177,7 +177,9 @@
             <thead>
               <tr>
                 <th>#</th>
-                <th>Sesi</th>
+                <!-- FIX BUG-2: label header disesuaikan agar akurat
+                     (data yang dirender adalah opponent_name, bukan sesi) -->
+                <th>Lawan / Sesi</th>
                 <th>Score</th>
                 <th>Status</th>
                 <th>Aksi</th>
