@@ -182,7 +182,7 @@
     const from = document.createElement('input');
     from.type = 'date';
     from.id = fromId;
-    from.className = 'table-date-input';
+    from.className = 'form-select form-select-sm table-filter-select';
     from.addEventListener('change', onChange);
 
     const sep = document.createElement('span');
@@ -192,7 +192,7 @@
     const to = document.createElement('input');
     to.type = 'date';
     to.id = toId;
-    to.className = 'table-date-input';
+    to.className = 'form-select form-select-sm table-filter-select';
     to.addEventListener('change', onChange);
 
     wrap.appendChild(from);
