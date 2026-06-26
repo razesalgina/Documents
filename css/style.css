@@ -720,6 +720,17 @@ a, button, [role="button"], input, textarea, select {
   min-width: 150px;
 }
 
+#teamAnalysis table td.kda-cell {
+  text-align: center;               /* fallback */
+}
+
+#teamAnalysis table td.kda-cell {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;                         /* jarak antar badge dan '/' */
+}
+
 /* ============================================================
    DETAIL TABLE — Player stats per game (lebih cerah / tinted)
    ============================================================ */
@@ -1330,6 +1341,19 @@ a, button, [role="button"], input, textarea, select {
 .kpi-sub {
   font-size: var(--text-xs);
   color: var(--color-text-muted);
+}
+
+.team-avg-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.team-avg-summary .team-avg-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 /* ============================================================

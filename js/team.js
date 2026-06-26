@@ -8,11 +8,11 @@
     goldlaner: 'Gold Laner',
   };
   const ROLE_BADGE = {
-    jungler:   'badge-red',
-    roamer:    'badge-blue',
-    midlaner:  'badge-yellow',
-    explaner:  'badge-green',
-    goldlaner: 'badge-neutral',
+    jungler:   'badge-green',
+    roamer:    'badge-red',
+    midlaner:  'badge-blue',
+    explaner:  'badge-neutral',
+    goldlaner: 'badge-yellow',
   };
 
   let players = [];
@@ -84,14 +84,63 @@
           <td>${statusBadge}</td>
           <td><small class="text-faint">${formatDate(p.created_at)}</small></td>
           <td>
-            <div class="table-actions">
-              <button class="btn btn-sm btn-secondary" data-action="edit" data-id="${p.id}">Edit</button>
+            <div class="btn-action-group">
+              <button class="btn btn-sm btn-outline" data-action="edit" data-id="${p.id}">
+                <svg aria-hidden="true">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>Edit
+              </button>
               <button class="btn btn-sm btn-ghost" data-action="toggle" data-id="${p.id}">${toggleLabel}</button>
               <button class="btn btn-sm btn-danger" data-action="delete" data-id="${p.id}">Hapus</button>
             </div>
           </td>
         </tr>`;
     }).join('');
+  }
+
+  // ── Filter ────────────────────────
+  function createTeamToolbar(container) {
+    if (!container) return;
+
+    const toolbar = document.createElement('div');
+    toolbar.className = 'table-toolbar';
+
+    const left  = document.createElement('div'); left.className = 'table-toolbar-left';
+    const right = document.createElement('div'); right.className = 'table-toolbar-right';
+
+    // Badge count — ditempatkan di kiri
+    const countBadge = document.createElement('span');
+    countBadge.id        = 'rosterCount';
+    countBadge.className = 'badge badge-blue';
+    countBadge.textContent = '0 pemain';
+    left.appendChild(countBadge);
+
+    const makeSelect = (id, placeholder, options) => {
+      const sel = document.createElement('select');
+      sel.id        = id;
+      sel.className = 'form-select form-select-sm table-filter-select';
+      sel.innerHTML = `<option value="all">${placeholder}</option>` +
+        options.map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+      sel.addEventListener('change', renderPlayers);
+      return sel;
+    };
+
+    right.appendChild(makeSelect('filterStatus', 'Semua Status', [
+      ['active',   'Aktif'],
+      ['inactive', 'Tidak Aktif'],
+    ]));
+    right.appendChild(makeSelect('filterRole', 'Semua Role', [
+      ['jungler',    'Jungler'],
+      ['roamer',     'Roamer'],
+      ['midlaner',   'Mid Laner'],
+      ['explaner',   'Exp Laner'],
+      ['goldlaner',  'Gold Laner'],
+    ]));
+
+    toolbar.appendChild(left);
+    toolbar.appendChild(right);
+    container.parentElement.insertBefore(toolbar, container);
   }
 
   // ── Load from server ────────────────────────
@@ -239,6 +288,7 @@
 
   // ── Init ────────────────────────────────────
   document.addEventListener('DOMContentLoaded', () => {
+    createTeamToolbar(document.getElementById('teamTableWrap'));
     loadPlayers();
 
     document.getElementById('teamForm')?.addEventListener('submit', handleAddPlayer);
@@ -249,7 +299,5 @@
     document.getElementById('editModal')?.addEventListener('click', (e) => {
       if (e.target === document.getElementById('editModal')) closeEditModal();
     });
-    document.getElementById('filterStatus')?.addEventListener('change', renderPlayers);
-    document.getElementById('filterRole')?.addEventListener('change', renderPlayers);
   });
 })();

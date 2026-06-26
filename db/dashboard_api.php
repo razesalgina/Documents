@@ -73,6 +73,36 @@ try {
     }
     unset($ts);
 
+    // ─── Team Analysis ────────────────────────
+    $avgStmt = $pdo->query('
+        SELECT
+            COUNT(*)                                   AS total_games,
+            AVG(team_kills)                            AS avg_kills,
+            AVG(team_deaths)                           AS avg_deaths,
+            AVG(duration_minutes * 60 + duration_seconds) AS avg_duration_seconds
+        FROM games
+    ');
+    $avgRow = $avgStmt->fetch(PDO::FETCH_ASSOC) ?: null;
+
+    $teamAvg = null;
+    if ($avgRow && (int)$avgRow['total_games'] > 0) {
+        $totalGames    = (int)$avgRow['total_games'];
+        $avgKills      = (float)$avgRow['avg_kills'];
+        $avgDeaths     = (float)$avgRow['avg_deaths'];
+        $avgDurSeconds = (float)$avgRow['avg_duration_seconds'];
+
+        $avgDurMinutes = floor($avgDurSeconds / 60);
+        $avgDurRemain  = (int)round($avgDurSeconds - $avgDurMinutes * 60);
+
+        $teamAvg = [
+            'games'         => $totalGames,
+            'avg_kills'     => round($avgKills, 2),
+            'avg_deaths'    => round($avgDeaths, 2),
+            'avg_dur_min'   => (int)$avgDurMinutes,
+            'avg_dur_sec'   => $avgDurRemain,
+        ];
+    }
+    
     // ─── Most picked heroes ──────────────────────────
     $heroPicks = $pdo->query(
         "SELECT gp.hero_name,
@@ -107,6 +137,7 @@ try {
             'players'      => $players,
             'winrate'      => $winrate,
         ],
+        'team_avg'       => $teamAvg,
         'recent_matches' => $recentMatches,
         'team_stats'     => $teamStats,
         'hero_picks'     => $heroPicks,

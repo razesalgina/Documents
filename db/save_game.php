@@ -34,6 +34,41 @@ if ($matchId <= 0) {
     exit;
 }
 
+// ── Helper: update aggregate score di tabel matches ─────────────────────
+function recompute_match_score(PDO $pdo, int $matchId): void {
+    // Hitung jumlah game win/lose untuk match ini
+    $stmt = $pdo->prepare('SELECT result, COUNT(*) AS cnt FROM games WHERE match_id = :mid GROUP BY result');
+    $stmt->execute([':mid' => $matchId]);
+
+    $wins = 0;
+    $loss = 0;
+
+    foreach ($stmt->fetchAll() as $row) {
+        $r = strtolower($row['result'] ?? '');
+        if ($r === 'win')  $wins += (int)$row['cnt'];
+        if ($r === 'lose') $loss += (int)$row['cnt'];
+        // draw tidak menambah wins maupun loss
+    }
+
+    $our  = $wins;
+    $opp  = $loss;
+    $res  = 'draw';
+    if ($our > $opp)      $res = 'win';
+    elseif ($our < $opp)  $res = 'lose';
+
+    $upd = $pdo->prepare('
+        UPDATE matches
+        SET our_score = :our, opponent_score = :opp, result = :res
+        WHERE id = :id
+    ');
+    $upd->execute([
+        ':our' => $our,
+        ':opp' => $opp,
+        ':res' => $res,
+        ':id'  => $matchId,
+    ]);
+}
+
 try {
     $pdo->beginTransaction();
 
@@ -131,6 +166,8 @@ try {
             ':total_gold'  => $totalGold,
         ]);
     }
+
+    recompute_match_score($pdo, $matchId);
 
     $pdo->commit();
     echo json_encode(['ok' => true, 'gameId' => $gameId, 'gameNumber' => $gameNumber]);

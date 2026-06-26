@@ -13,9 +13,7 @@
 </head>
 <body>
 <div class="app-layout sidebar-float">
-
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <div class="sidebar-logo-icon">
@@ -34,30 +32,55 @@
     <div class="sidebar-nav">
       <div class="nav-section-label">Navigation</div>
       <a href="index.html" class="nav-item" data-page="index.html">
-        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <svg viewBox="0 0 24 24">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
         Dashboard
       </a>
       <a href="competition.html" class="nav-item" data-page="competition.html">
-        <svg viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+          <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+          <path d="M4 22h16"/>
+          <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+          <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+          <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+        </svg>
         Competition
       </a>
       <a href="match.html" class="nav-item" data-page="match.html">
-        <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <svg viewBox="0 0 24 24">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
         Match
       </a>
       <a href="train.html" class="nav-item active" data-page="train.html">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
         Train
       </a>
       <a href="team.html" class="nav-item" data-page="team.html">
-        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <svg viewBox="0 0 24 24">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
         Tim
       </a>
     </div>
 
     <div class="sidebar-footer">
       <button class="theme-toggle" id="themeToggle" aria-label="Toggle theme">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
       </button>
     </div>
   </nav>
@@ -66,17 +89,15 @@
     <header class="topbar">
       <div class="topbar-breadcrumb">
         <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">
-          <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        </button>
-        <span>Esport</span><span class="sep">/</span><span class="current">Train</span>
-      </div>
-      <div class="topbar-actions">
-        <button class="btn btn-sm btn-ghost" id="refreshBtn" title="Refresh data" aria-label="Refresh training data">
-          <svg viewBox="0 0 24 24" style="width:16px;height:16px">
-            <polyline points="23 4 23 10 17 10"/>
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          <svg viewBox="0 0 24 24">
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <line x1="3" y1="12" x2="21" y2="12"/>
+            <line x1="3" y1="18" x2="21" y2="18"/>
           </svg>
         </button>
+        <a href="index.html">Esport</a>
+        <span class="sep">/</span>
+        <a href="train.html" class="current">Train</a>
       </div>
     </header>
 
@@ -88,7 +109,7 @@
             <h1 class="page-title">Training</h1>
             <p class="page-subtitle">Pantau perkembangan latihan tim — Scrim &amp; Ranked</p>
           </div>
-          <a href="addmatch.html" class="btn btn-primary">
+          <a href="addmatch.html?from=train" class="btn btn-primary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
               <line x1="12" y1="5" x2="12" y2="19"/>
               <line x1="5" y1="12" x2="19" y2="12"/>
@@ -114,7 +135,6 @@
                   <th data-sort-key="score">Skor / Hasil <span class="sort-icon-wrap"></span></th>
                   <th data-sort-key="format">Format <span class="sort-icon-wrap"></span></th>
                   <th data-sort-key="status">Status <span class="sort-icon-wrap"></span></th>
-                  <th>Games</th>
                   <th>Aksi</th>
                 </tr>
               </thead>
@@ -141,7 +161,6 @@
                   <th data-sort-key="opponent">Lawan / Sesi <span class="sort-icon-wrap"></span></th>
                   <th data-sort-key="score">Skor / Hasil <span class="sort-icon-wrap"></span></th>
                   <th data-sort-key="status">Status <span class="sort-icon-wrap"></span></th>
-                  <th>Games</th>
                   <th>Aksi</th>
                 </tr>
               </thead>

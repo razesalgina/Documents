@@ -40,6 +40,15 @@
     return `<span class="${cssMap[r] || 'badge badge-neutral'}">${label}</span>`;
   }
 
+  // TAMBAH — setelah fungsi resultBadgeHtml
+  function scoreBadgeHtml(our, opp) {
+    return [
+      `<span class="badge badge-blue">${our}</span>`,
+      `<span class="badge badge-neutral">:</span>`,
+      `<span class="badge badge-red">${opp}</span>`,
+    ].join(' ');
+  }
+
   function statusBadgeHtml(status) {
     const s        = (status || '').toLowerCase();
     const cssMap   = { upcoming: 'badge badge-yellow', finished: 'badge badge-green', cancel: 'badge badge-red' };
@@ -252,7 +261,7 @@
   })();
 
   function handleDeleteMatch(id, opponentName) {
-    const label = opponentName ? `match vs "${opponentName}"` : `match #${id}`;
+    const label = opponentName ? `Match vs "${opponentName}"` : `match #${id}`;
     DeleteModal.showStep1(label, function (mode) {
       DeleteModal.showStep2(label, mode, function (confirmedMode) {
         const apiBase = window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
@@ -371,12 +380,19 @@
             <a href="game.html?match_id=${m.id}" class="link-primary">${m.opponent_name || '-'}</a>
           </td>
           <td>${formatTypeLabel(m.type)}</td>
-          <td>${our}:${opp}&nbsp;${resultBadgeHtml(our, opp, m.result)}</td>
+          <td>${scoreBadgeHtml(our, opp)}&nbsp;${resultBadgeHtml(our, opp, m.result)}</td>
           <td>${m.format || '-'}</td>
           <td>${statusBadgeHtml(m.status)}</td>
           <td>
-            <a href="editmatch.html?id=${m.id}" class="btn btn-sm btn-secondary">Edit</a>
-            <button class="btn btn-sm btn-danger" data-id="${m.id}" data-name="${safeOpponent}">Hapus</button>
+            <div class="btn-action-group">
+              <a href="editmatch.html?id=${m.id}" class="btn btn-sm btn-outline">
+                <svg aria-hidden="true">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>Edit
+              </a>
+              <button class="btn btn-sm btn-danger" data-id="${m.id}" data-name="${safeOpponent}">Hapus</button>
+            </div>
           </td>
         </tr>`;
     }).join('');
@@ -432,7 +448,6 @@
     dateWrap.className  = 'date-range-wrap';
     dateWrap.style.cssText = 'display:flex;align-items:center;gap:6px';
     const dateLabel = document.createElement('span');
-    dateLabel.textContent = 'Tanggal:';
     dateLabel.style.cssText = 'font-size:0.8125rem;color:var(--color-text-muted,#64748b);white-space:nowrap';
     const dateSep = document.createElement('span');
     dateSep.textContent = '\u2013';
@@ -503,7 +518,7 @@
 
     const addMatchBtn = document.getElementById('addMatchBtn');
     if (addMatchBtn && competitionId) {
-      addMatchBtn.href = `addmatch.html?competition_id=${competitionId}`;
+      addMatchBtn.href = `addmatch.html?competition_id=${competitionId}&from=match`;
     }
 
     if (!competitionId) return;

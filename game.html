@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-theme="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -13,7 +13,7 @@
   <script src="js/game.js" defer></script>
 </head>
 <body>
-<div class="app-layout">
+<div class="app-layout sidebar-float">
 
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -95,14 +95,16 @@
   <div class="main-wrapper">
     <header class="topbar">
       <div class="topbar-breadcrumb">
-        <button class="menu-toggle" type="button" aria-label="Buka menu" id="menuToggle">
+        <button class="menu-toggle" type="button" aria-label="Toggle navigation" id="menuToggle">
           <svg viewBox="0 0 24 24">
             <line x1="3" y1="6" x2="21" y2="6"/>
             <line x1="3" y1="12" x2="21" y2="12"/>
             <line x1="3" y1="18" x2="21" y2="18"/>
           </svg>
         </button>
-        <span>Match</span>
+        <a href="index.html">Esport</a>
+        <span class="sep">/</span>
+        <a href="match.html">Match</a>
         <span class="sep">/</span>
         <span id="breadcrumbMatch" class="current">Game</span>
       </div>

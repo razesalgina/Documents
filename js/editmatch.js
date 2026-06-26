@@ -264,8 +264,8 @@
         ? formData.get('matchFormat').toUpperCase()
         : null;
       payload.opponent_name = (formData.get('opponentName') || '').trim() || null;
-      payload.match_time    = formData.get('matchTime') || null;
-
+      const rawTime = formData.get('matchTime') || '';
+      payload.match_time = rawTime || '00:00:00';
     } else if (type === 'ranked') {
       const rankedAutoLabel = document.getElementById('rankedAutoLabel');
       const autoName = rankedAutoLabel?.dataset.rankedName || null;

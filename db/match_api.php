@@ -138,6 +138,19 @@ if ($method === 'POST') {
             $affectedGames = 0;
 
             if ($mode === 'cascade') {
+                // Ambil semua game_id milik match ini
+                $idsStmt = $pdo->prepare('SELECT id FROM games WHERE match_id = :mid');
+                $idsStmt->execute([':mid' => $id]);
+                $gameRows = $idsStmt->fetchAll(PDO::FETCH_ASSOC);
+                $gameIds  = array_column($gameRows, 'id');
+
+                if (!empty($gameIds)) {
+                    // Hapus semua game_players untuk game-game ini
+                    $in = implode(',', array_fill(0, count($gameIds), '?'));
+                    $delPlayers = $pdo->prepare("DELETE FROM game_players WHERE game_id IN ($in)");
+                    $delPlayers->execute($gameIds);
+                }
+
                 // Hapus semua games milik match ini secara permanen
                 $gameStmt = $pdo->prepare('DELETE FROM games WHERE match_id = :mid');
                 $gameStmt->execute([':mid' => $id]);

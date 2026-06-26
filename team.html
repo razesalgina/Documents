@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-theme="dark">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -12,8 +12,7 @@
   <script src="js/team.js" defer></script>
 </head>
 <body>
-<div class="app-layout">
-
+<div class="app-layout sidebar-float">
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
   <nav class="sidebar" id="sidebar">
@@ -63,12 +62,12 @@
   <div class="main-wrapper">
     <header class="topbar">
       <div class="topbar-breadcrumb">
-        <button class="menu-toggle" id="menuToggle" aria-label="Buka menu">
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">
           <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
-        <span>Esport</span>
+        <a href="index.html">Esport</a>
         <span class="sep">/</span>
-        <span class="current">Team</span>
+        <a href="team.html" class="current">Team</a>
       </div>
     </header>
 
@@ -84,24 +83,8 @@
       <section class="section">
         <div class="card-header">
           <h2 class="section-title">Roster Tim</h2>
-          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
-            <span class="badge badge-blue" id="rosterCount">0 pemain</span>
-            <select class="form-select form-select-sm" id="filterStatus" style="min-width:110px">
-              <option value="all">Semua Status</option>
-              <option value="active">Aktif</option>
-              <option value="inactive">Tidak Aktif</option>
-            </select>
-            <select class="form-select form-select-sm" id="filterRole" style="min-width:130px">
-              <option value="all">Semua Role</option>
-              <option value="jungler">Jungler</option>
-              <option value="roamer">Roamer</option>
-              <option value="midlaner">Mid Laner</option>
-              <option value="explaner">Exp Laner</option>
-              <option value="goldlaner">Gold Laner</option>
-            </select>
-          </div>
         </div>
-        <div class="table-wrap">
+        <div class="table-wrap" id="teamTableWrap">
           <table>
             <thead>
               <tr>

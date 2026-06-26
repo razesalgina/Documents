@@ -82,9 +82,21 @@ try {
         $matchStmt->execute([':cid' => $id]);
         $matchIds = $matchStmt->fetchAll(PDO::FETCH_COLUMN);
 
-        // 2. Hapus semua games dari match-match tersebut
         if (!empty($matchIds)) {
+            // 1a. Ambil semua game_id untuk match-match tersebut
             $placeholders = implode(',', array_fill(0, count($matchIds), '?'));
+            $gameIdStmt = $pdo->prepare("SELECT id FROM games WHERE match_id IN ($placeholders)");
+            $gameIdStmt->execute($matchIds);
+            $gameIds = $gameIdStmt->fetchAll(PDO::FETCH_COLUMN);
+
+            // 1b. Hapus semua game_players untuk game-game ini
+            if (!empty($gameIds)) {
+                $gpPlaceholders = implode(',', array_fill(0, count($gameIds), '?'));
+                $gpStmt = $pdo->prepare("DELETE FROM game_players WHERE game_id IN ($gpPlaceholders)");
+                $gpStmt->execute($gameIds);
+            }
+
+            // 2. Hapus semua games dari match-match tersebut
             $gameStmt = $pdo->prepare("DELETE FROM games WHERE match_id IN ($placeholders)");
             $gameStmt->execute($matchIds);
             $deletedGames = $gameStmt->rowCount();
@@ -94,7 +106,6 @@ try {
         $matchDelStmt = $pdo->prepare('DELETE FROM matches WHERE competition_id = :cid');
         $matchDelStmt->execute([':cid' => $id]);
         $deletedMatches = $matchDelStmt->rowCount();
-
     } else {
         // detach: lepas relasi match ↔ competition; data match & game tetap
         $detachStmt = $pdo->prepare('UPDATE matches SET competition_id = NULL WHERE competition_id = :cid');

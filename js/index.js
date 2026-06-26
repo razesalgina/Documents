@@ -73,8 +73,59 @@
   }
 
   // ── Team Analysis ─────────────────────────────
-  // Menggunakan s.player_name — key ini dipertahankan di dashboard_api.php
-  // meski skema DB kini pakai player_id (JOIN players → p.name AS player_name).
+  // Helper ambil config threshold per role bisa diubah saat update tambah page strategy
+  function getRoleThresholds(roleKey) {
+    switch (roleKey) {
+      case 'jungler':
+        return { k: 5,  d: 4.5, a: 5  };
+      case 'midlaner':
+        return { k: 5,  d: 3.5, a: 5  };
+      case 'roamer':
+        return { k: 1,  d: 6.5, a: 9  };
+      case 'explaner':
+        return { k: 3,  d: 5.5, a: 7  };
+      case 'goldlaner':
+        return { k: 6,  d: 2.5, a: 9  };
+      default:
+        // default generic threshold kalau role tidak dikenal
+        return { k: 3, d: 4, a: 5 };
+    }
+  }
+
+  // Helper tentukan warna badge kill/death/assist
+  function getKdaBadgeClasses(roleKey, avgKill, avgDeath, avgAssist) {
+    const t = getRoleThresholds(roleKey);
+    const killCls   = avgKill   >= t.k ? 'badge-green' : 'badge-red';
+    const deathCls  = avgDeath  >= t.d ? 'badge-red'   : 'badge-green';
+    const assistCls = avgAssist >= t.a ? 'badge-green' : 'badge-red';
+    return { killCls, deathCls, assistCls };
+  }
+
+  function renderTeamAvgSummary(teamAvg) {
+    const el = document.getElementById('teamAvgSummary');
+    if (!el) return;
+
+    if (!teamAvg || !teamAvg.games) {
+      el.textContent = 'Belum ada game';
+      return;
+    }
+
+    const kills  = teamAvg.avg_kills.toFixed(2);
+    const deaths = teamAvg.avg_deaths.toFixed(2);
+    const min    = teamAvg.avg_dur_min;
+    const sec    = String(teamAvg.avg_dur_sec).padStart(2, '0');
+
+    el.innerHTML = `
+      <div class="team-avg-pill">
+        <span class="badge badge-blue">${kills}</span>
+        <span>/</span>
+        <span class="badge badge-red">${deaths}</span>
+        <span>/</span>
+        <span class="badge badge-yellow">${min}m ${sec}s</span>
+      </div>
+    `;
+  }
+
   function renderTeamAnalysis(stats) {
     if (!stats || stats.length === 0) {
       setHTML('teamAnalysis', `
@@ -85,24 +136,50 @@
         </div>`);
       return;
     }
+
     const rows = stats.map((s) => {
-      const roleKey  = (s.primary_role || '').toLowerCase();
-      const roleLbl  = ROLE_LABEL[roleKey] || s.primary_role || '—';
-      const roleCls  = ROLE_BADGE[roleKey] || 'badge-neutral';
+      const roleKey = (s.primary_role || '').toLowerCase();
+      const roleLbl = ROLE_LABEL[roleKey] || s.primary_role || '—';
+      const roleCls = ROLE_BADGE[roleKey] || 'badge-neutral';
+
       const kdaVal   = parseFloat(s.avg_kda);
-      const kdaColor = kdaVal >= 3 ? 'badge-green' : kdaVal >= 2 ? 'badge-yellow' : 'badge-red';
+      const kdaColor = kdaVal >= 8 ? 'badge-green' : kdaVal >= 7 ? 'badge-yellow' : 'badge-red';
+
+      const games = s.games || 0;
+      const rawAvgKill   = games > 0 ? s.total_kills   / games : 0;
+      const rawAvgDeath  = games > 0 ? s.total_deaths  / games : 0;
+      const rawAvgAssist = games > 0 ? s.total_assists / games : 0;
+
+      const avgKill   = Number(rawAvgKill.toFixed(2));
+      const avgDeath  = Number(rawAvgDeath.toFixed(2));
+      const avgAssist = Number(rawAvgAssist.toFixed(2));
+
+      const { killCls, deathCls, assistCls } =
+        getKdaBadgeClasses(roleKey, avgKill, avgDeath, avgAssist);
+
       return `
         <tr>
           <td><strong>${s.player_name || '—'}</strong></td>
           <td><span class="badge ${roleCls}">${roleLbl}</span></td>
           <td><span class="badge badge-neutral">${s.games}G</span></td>
-          <td>${s.total_kills}/${s.total_deaths}/${s.total_assists}</td>
+          <td class="kda-cell">
+            <span class="badge ${killCls}">${avgKill}</span>
+            <span>/</span>
+            <span class="badge ${deathCls}">${avgDeath}</span>
+            <span>/</span>
+            <span class="badge ${assistCls}">${avgAssist}</span>
+          </td>
           <td><span class="badge ${kdaColor}">${s.avg_kda}</span></td>
         </tr>`;
     }).join('');
+
     setHTML('teamAnalysis', `
       <table>
-        <thead><tr><th>Pemain</th><th>Role</th><th>Games</th><th>K/D/A</th><th>Avg KDA</th></tr></thead>
+        <thead>
+          <tr>
+            <th>Pemain</th><th>Role</th><th>Games</th><th>K/D/A</th><th>KDA</th>
+          </tr>
+        </thead>
         <tbody>${rows}</tbody>
       </table>`);
   }
@@ -188,6 +265,7 @@
         renderTeamAnalysis(data.team_stats);
         renderHeroPicks(data.hero_picks);
         renderCompOverview(data.comp_status);
+        renderTeamAvgSummary(data.team_avg);
 
         const now = new Date().toLocaleString('id-ID', {
           day: '2-digit', month: 'short', year: 'numeric',
@@ -203,6 +281,5 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     loadDashboard();
-    document.getElementById('refreshBtn')?.addEventListener('click', loadDashboard);
   });
 })();

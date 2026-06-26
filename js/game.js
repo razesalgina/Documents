@@ -234,7 +234,7 @@
     tbody.innerHTML = games.map((g) => {
       const dur = `${g.duration_minutes || 0}m ${String(g.duration_seconds || 0).padStart(2, '0')}s`;
       const mvp = g.mvp
-        ? `<span class="badge badge-blue">${g.mvp}</span>`
+        ? `<span class="badge badge-yellow">${g.mvp}</span>`
         : `<span class="badge badge-neutral">—</span>`;
 
       return `

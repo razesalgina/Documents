@@ -11,6 +11,10 @@
     return new URLSearchParams(window.location.search).get(name);
   }
 
+  function getSourcePage() {
+    return (getParam('from') || '').toLowerCase();
+  }
+
   function apiBase() {
     return window.EsportConfig ? window.EsportConfig.apiBase : 'db/';
   }
@@ -42,6 +46,9 @@
   // ── Hitung href kembali berdasarkan lockedCompetitionId ──
   function backHref(type) {
     if (lockedCompetitionId) return `match.html?competition_id=${lockedCompetitionId}`;
+    const sourcePage = getSourcePage();
+    if (sourcePage === 'train') return 'train.html';
+    if (sourcePage === 'match') return 'match.html';
     return (type === 'scrim' || type === 'ranked') ? 'train.html' : 'match.html';
   }
 
@@ -141,7 +148,7 @@
     const type          = (formData.get('type') || '').toLowerCase();
     const matchDate     = formData.get('matchDate') || '';
     const matchTime     = formData.get('matchTime') || '';
-    const format        = formData.get('matchFormat') || null;
+    let format        = formData.get('matchFormat') || null;
     const competitionId = formData.get('event') ? Number(formData.get('event')) : null;
 
     if (!type) { showToast('Kategori match wajib dipilih', 'error'); return; }
@@ -154,7 +161,7 @@
         ? rankedAutoLabel.dataset.rankedName
         : null;
       if (!matchDate) { showToast('Tanggal wajib diisi untuk Ranked', 'error'); return; }
-
+      format = null;
     } else {
       opponentName = (formData.get('opponentName') || '').trim() || null;
 

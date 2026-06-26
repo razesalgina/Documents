@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" data-theme="dark">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -8,15 +8,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css"/>
-
   <script src="js/global.js" defer></script>
   <script src="js/match.js" defer></script>
 </head>
 <body>
-<div class="app-layout">
-
+<div class="app-layout sidebar-float">
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
-
   <nav class="sidebar" id="sidebar">
     <div class="sidebar-logo">
       <div class="sidebar-logo-icon">
@@ -97,16 +94,16 @@
   <div class="main-wrapper">
     <header class="topbar">
       <div class="topbar-breadcrumb">
-        <button class="menu-toggle" id="menuToggle" aria-label="Buka menu">
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle navigation">
           <svg viewBox="0 0 24 24">
             <line x1="3" y1="6" x2="21" y2="6"/>
             <line x1="3" y1="12" x2="21" y2="12"/>
             <line x1="3" y1="18" x2="21" y2="18"/>
           </svg>
         </button>
-        <span>Esport</span>
+        <a href="index.html">Esport</a>
         <span class="sep">/</span>
-        <span class="current">Match</span>
+        <a href="match.html" class="current">Match</a>
       </div>
     </header>
 
@@ -121,7 +118,7 @@
             <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
             Kembali
           </a>
-          <a href="addmatch.html" class="btn btn-primary" id="addMatchBtn">
+          <a href="addmatch.html?from=match" class="btn btn-primary" id="addMatchBtn">
             <svg viewBox="0 0 24 24">
               <line x1="12" y1="5" x2="12" y2="19"/>
               <line x1="5" y1="12" x2="19" y2="12"/>
@@ -165,7 +162,7 @@
                     </svg>
                     <h3>Belum ada match</h3>
                     <p>Tambahkan match pertama untuk mulai melacak performa tim</p>
-                    <a href="addmatch.html" class="btn btn-primary btn-sm">
+                    <a href="addmatch.html?from=match" class="btn btn-primary btn-sm">
                       <svg viewBox="0 0 24 24">
                         <line x1="12" y1="5" x2="12" y2="19"/>
                         <line x1="5" y1="12" x2="19" y2="12"/>
